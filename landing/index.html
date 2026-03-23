@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AppClaw — AI-Powered Mobile Automation Agent</title>
+  <meta name="description" content="Tell AppClaw what to do in plain English. It figures out what to tap, type, and swipe — across Android and iOS.">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #09090b;
+      --bg-secondary: #0f0f12;
+      --bg-tertiary: #18181b;
+      --bg-card: #131316;
+      --bg-card-hover: #1a1a1f;
+      --border: rgba(255,255,255,0.06);
+      --border-hover: rgba(255,255,255,0.12);
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-glow: rgba(59,130,246,0.15);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.15);
+      --orange: #f59e0b;
+      --orange-dim: rgba(245,158,11,0.15);
+      --purple: #a855f7;
+      --purple-dim: rgba(168,85,247,0.15);
+      --cyan: #06b6d4;
+      --cyan-dim: rgba(6,182,212,0.15);
+      --red: #ef4444;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ===== NOISE TEXTURE OVERLAY ===== */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ===== NAVBAR ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(9,9,11,0.8);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+    }
+
+    .nav-logo-icon img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .nav-logo-text {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.04em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      transition: all 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-nav {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-nav-ghost { color: var(--text-secondary); background: transparent; }
+    .btn-nav-ghost:hover { color: var(--text-primary); }
+
+    .btn-nav-primary {
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .btn-nav-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .gh-star {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .gh-star:hover {
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .gh-star svg { width: 16px; height: 16px; fill: currentColor; }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-split {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+    }
+
+    .hero-left {
+      flex: 1;
+      text-align: left;
+    }
+
+    .hero-right {
+      flex: 1;
+      max-width: 480px;
+      flex-shrink: 0;
+    }
+
+    .hero-demo-frame {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      box-shadow: 0 0 80px rgba(59,130,246,0.08), 0 24px 48px rgba(0,0,0,0.4);
+    }
+
+    .hero-demo-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, rgba(6,182,212,0.04) 40%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-logo {
+      display: inline-block;
+      width: 100px;
+      height: 100px;
+      transition: transform 0.3s;
+      filter: drop-shadow(0 4px 24px rgba(229,62,62,0.3));
+    }
+
+    .hero-logo:hover {
+      transform: scale(1.08);
+      filter: drop-shadow(0 8px 32px rgba(229,62,62,0.4));
+    }
+
+    .hero-logo img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px 5px 6px;
+      border-radius: 100px;
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15);
+      color: var(--accent-hover);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      transition: all 0.2s;
+    }
+
+    .hero-badge:hover { background: rgba(59,130,246,0.12); }
+
+    .hero-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(34,197,94,0.5);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      max-width: 900px;
+      margin: 0 0 24px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 50%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      max-width: 580px;
+      margin: 0 0 40px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .btn-hero {
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-hero-primary {
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 0 0 1px rgba(59,130,246,0.3), 0 4px 16px rgba(59,130,246,0.2);
+    }
+
+    .btn-hero-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 0 0 1px rgba(59,130,246,0.4), 0 8px 30px rgba(59,130,246,0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-hero-secondary {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .btn-hero-secondary:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--border-hover);
+    }
+
+    .btn-hero-secondary svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-secondary);
+    }
+
+    .hero-note {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-bottom: 60px;
+    }
+
+    /* ===== TERMINAL DEMO ===== */
+    .terminal {
+      max-width: 780px;
+      margin: 0 auto;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 20px 50px -12px rgba(0,0,0,0.5),
+        0 0 80px rgba(59,130,246,0.05);
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      padding: 14px 18px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green { background: #28c840; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    .terminal-body {
+      padding: 24px 28px 28px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+    }
+
+    .t-prompt { color: var(--cyan); font-weight: 600; }
+    .t-cmd { color: var(--text-primary); }
+    .t-string { color: var(--orange); }
+    .t-dim { color: var(--text-tertiary); }
+    .t-info { color: var(--accent-hover); }
+    .t-ok { color: var(--green); }
+    .t-step { color: var(--text-secondary); }
+    .t-muted { color: #52525b; }
+
+    .t-line { display: block; }
+    .t-line.indent { padding-left: 20px; }
+
+    /* ===== PROVIDERS BAR ===== */
+    .providers {
+      padding: 64px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .providers-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 28px;
+    }
+
+    .providers-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .provider-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #52525b;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      transition: color 0.2s;
+    }
+
+    .provider-item:hover { color: var(--text-secondary); }
+
+    .provider-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    /* ===== SECTION STYLING ===== */
+    section { position: relative; z-index: 1; }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+
+    .badge-blue {
+      background: rgba(59,130,246,0.1);
+      color: var(--accent-hover);
+      border: 1px solid rgba(59,130,246,0.15);
+    }
+
+    .badge-green {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.15);
+    }
+
+    .badge-purple {
+      background: var(--purple-dim);
+      color: var(--purple);
+      border: 1px solid rgba(168,85,247,0.15);
+    }
+
+    .badge-orange {
+      background: var(--orange-dim);
+      color: var(--orange);
+      border: 1px solid rgba(245,158,11,0.15);
+    }
+
+    .section-header h2 {
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .section-header p {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.65;
+    }
+
+    /* ===== FEATURES ===== */
+    .features {
+      padding: 120px 0;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    .fi-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.1); }
+    .fi-green { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.1); }
+    .fi-orange { background: var(--orange-dim); border: 1px solid rgba(245,158,11,0.1); }
+    .fi-purple { background: var(--purple-dim); border: 1px solid rgba(168,85,247,0.1); }
+    .fi-cyan { background: var(--cyan-dim); border: 1px solid rgba(6,182,212,0.1); }
+    .fi-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.1); }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-it-works {
+      padding: 120px 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .how-step {
+      background: var(--bg-primary);
+      padding: 40px 28px;
+      text-align: center;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .how-step:hover { background: var(--bg-card-hover); }
+
+    .how-step-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 18px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+    }
+
+    .how-step h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .how-step p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    /* ===== ARCHITECTURE ===== */
+    .architecture {
+      padding: 120px 0;
+    }
+
+    .arch-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .arch-text h3 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .arch-text p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
+
+    .arch-features {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .arch-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .arch-feature-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .arch-feature-text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .arch-feature-text p {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-bottom: 0;
+    }
+
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .arch-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .arch-box-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .arch-box-label .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .arch-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .arch-chip {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .arch-arrow {
+      text-align: center;
+      padding: 6px 0;
+      color: var(--text-tertiary);
+      font-size: 16px;
+    }
+
+    /* ===== SHOWCASE / BENTO ===== */
+    .showcase {
+      padding: 120px 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .bento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      transition: all 0.25s;
+      overflow: hidden;
+    }
+
+    .bento-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .bento-card.wide {
+      grid-column: span 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .bento-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 16px;
+    }
+
+    .bento-card h3 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+
+    .bento-card > p, .bento-card .bento-text p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .bento-visual {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.9;
+    }
+
+    .bv-dim { color: #3f3f46; }
+    .bv-blue { color: var(--accent-hover); }
+    .bv-text { color: var(--text-secondary); }
+    .bv-green { color: var(--green); }
+    .bv-orange { color: var(--orange); }
+    .bv-cyan { color: var(--cyan); }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    /* ===== STATS ===== */
+    .stats {
+      padding: 80px 0;
+      background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(6,182,212,0.05) 100%);
+      border-top: 1px solid rgba(59,130,246,0.1);
+      border-bottom: 1px solid rgba(59,130,246,0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--accent-hover), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ===== QUICKSTART ===== */
+    .quickstart {
+      padding: 120px 0;
+    }
+
+    .qs-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .qs-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .qs-step {
+      display: flex;
+      gap: 16px;
+    }
+
+    .qs-step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-hover);
+      flex-shrink: 0;
+    }
+
+    .qs-step-content h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .qs-step-content p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .qs-terminal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      position: sticky;
+      top: 88px;
+    }
+
+    .qs-terminal-bar {
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qs-terminal-bar .terminal-dot { width: 10px; height: 10px; }
+
+    .qs-terminal-body {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+    }
+
+    .qs-terminal-body .t-line { margin-bottom: 2px; }
+
+    /* ===== CTA ===== */
+    .cta {
+      padding: 120px 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .cta-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta h2 {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .cta > p {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 460px;
+      margin: 0 auto 40px;
+      line-height: 1.65;
+    }
+
+    .cta-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .install-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 22px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .install-cmd:hover {
+      border-color: var(--border-hover);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .install-cmd .dollar { color: var(--text-tertiary); }
+    .install-cmd code { color: var(--text-primary); font-weight: 600; }
+    .install-cmd .copy-icon { color: var(--text-tertiary); font-size: 14px; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 64px 0 0;
+    }
+
+    .footer-inner {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+      padding-bottom: 48px;
+    }
+
+    .footer-brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .footer-brand-logo .nav-logo-icon {
+      width: 30px;
+      height: 30px;
+    }
+
+    .footer-brand-logo span {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .footer-brand p {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      line-height: 1.65;
+      max-width: 280px;
+    }
+
+    .footer-col h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+    }
+
+    .footer-col ul { list-style: none; }
+
+    .footer-col li { margin-bottom: 12px; }
+
+    .footer-col a {
+      font-size: 14px;
+      color: #52525b;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-col a:hover { color: var(--text-secondary); }
+
+    .footer-bottom {
+      padding: 24px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-bottom p {
+      font-size: 13px;
+      color: #3f3f46;
+    }
+
+    .footer-socials {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-socials a {
+      color: #3f3f46;
+      font-size: 13px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .footer-socials a:hover { color: var(--text-secondary); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .hero-split { flex-direction: column; text-align: center; }
+      .hero-left { text-align: center; }
+      .hero-left h1 { margin: 0 auto 24px; }
+      .hero-sub { margin: 0 auto 40px; }
+      .hero-actions { justify-content: center; }
+      .hero-right { max-width: 400px; width: 100%; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .how-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 40px; }
+      .arch-layout { grid-template-columns: 1fr; }
+      .bento-card.wide { grid-template-columns: 1fr; }
+      .qs-layout { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-right { gap: 8px; }
+      .btn-nav-ghost { display: none; }
+      .hero { padding: 120px 0 80px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .how-grid { grid-template-columns: 1fr; }
+      .bento-grid { grid-template-columns: 1fr; }
+      .bento-card.wide { grid-column: span 1; grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero-actions { flex-direction: column; }
+      .providers-logos { gap: 24px; }
+      .footer-inner { grid-template-columns: 1fr; gap: 32px; }
+      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+      .terminal-body { font-size: 11px; padding: 16px 20px; }
+    }
+
+    @media (max-width: 480px) {
+      .container { padding: 0 16px; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .stat-num { font-size: 36px; }
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+      animation: fade-up 0.6s ease-out forwards;
+      opacity: 0;
+    }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    .delay-5 { animation-delay: 0.5s; }
+
+    /* ===== TYPING ANIMATION ===== */
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: var(--accent-hover);
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ===== MOBILE NAV HAMBURGER ===== */
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-btn { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <div class="nav-logo-icon">
+          <img src="logo.svg" alt="AppClaw logo">
+        </div>
+        <span class="nav-logo-text">AppClaw</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#quickstart">Get Started</a></li>
+      </ul>
+      <div class="nav-right">
+        <a href="#quickstart" class="btn-nav btn-nav-ghost">Docs</a>
+        <a class="gh-star" href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="#quickstart" class="btn-nav btn-nav-primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+      <div class="hero-split">
+        <div class="hero-left">
+          <div class="animate-in" style="margin-bottom: 28px;">
+            <div class="hero-logo">
+              <img src="logo.svg" alt="AppClaw logo" width="88" height="88">
+            </div>
+          </div>
+          <div class="animate-in delay-1">
+            <div class="hero-badge">
+              <span class="hero-badge-dot"></span>
+              Open Source &middot; MIT License
+            </div>
+          </div>
+          <h1 class="animate-in delay-2">
+            Tell your phone<br>
+            <span class="gradient">what to do.</span>
+          </h1>
+          <p class="hero-sub animate-in delay-3">
+            AppClaw is an AI agent that automates any mobile app. Describe a goal in plain English &mdash; it sees the screen, reasons about what to do, and executes actions across Android and iOS.
+          </p>
+          <div class="hero-actions animate-in delay-3">
+            <a href="#quickstart" class="btn-hero btn-hero-primary">Get Started &rarr;</a>
+            <a href="https://github.com/AppiumTestDistribution/appclaw" class="btn-hero btn-hero-secondary" target="_blank" rel="noopener">
+              <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              View on GitHub
+            </a>
+          </div>
+          <p class="hero-note animate-in delay-4">Works with Claude, GPT-4, Gemini, Groq, and Ollama</p>
+        </div>
+        <div class="hero-right animate-in delay-4">
+          <div class="hero-demo-frame">
+            <img src="demo.gif" alt="AppClaw demo — AI automating a mobile app in real time" loading="eager">
+          </div>
+        </div>
+      </div>
+
+      <!-- TERMINAL DEMO -->
+      <div class="terminal animate-in delay-5">
+        <div class="terminal-bar">
+          <span class="terminal-dot dot-red"></span>
+          <span class="terminal-dot dot-yellow"></span>
+          <span class="terminal-dot dot-green"></span>
+          <span class="terminal-title">appclaw</span>
+          <span style="width: 36px"></span>
+        </div>
+        <div class="terminal-body">
+          <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start</span> <span class="t-string">"Send a WhatsApp message to Mom saying good morning"</span></span>
+          <span class="t-line">&nbsp;</span>
+          <span class="t-line indent"><span class="t-info">1/30</span>  <span class="t-step">launch &rarr;</span> <span class="t-string">"com.whatsapp"</span> <span class="t-dim">(Open WhatsApp)</span></span>
+          <span class="t-line indent"><span class="t-info">2/30</span>  <span class="t-step">find_and_tap &rarr;</span> <span class="t-string">"Mom"</span> <span class="t-dim">(Find Mom in chat list)</span></span>
+          <span class="t-line indent"><span class="t-info">3/30</span>  <span class="t-step">type &rarr;</span> <span class="t-string">"message_input"</span> <span class="t-dim">text=</span><span class="t-string">"good morning"</span></span>
+          <span class="t-line indent"><span class="t-info">4/30</span>  <span class="t-step">submit_message</span> <span class="t-dim">(Find and tap Send button)</span></span>
+          <span class="t-line indent"><span class="t-info">5/30</span>  <span class="t-step">done</span> <span class="t-dim">(Message sent successfully)</span></span>
+          <span class="t-line">&nbsp;</span>
+          <span class="t-line indent"><span class="t-ok">&#10003; Goal completed in 5 steps</span></span>
+          <span class="t-line">&nbsp;</span>
+          <span class="t-line indent"><span class="t-muted">&#x2500;&#x2500; Token Usage &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;</span></span>
+          <span class="t-line indent"><span class="t-dim">Model:</span>        <span class="t-step">gemini-2.0-flash</span></span>
+          <span class="t-line indent"><span class="t-dim">Total:</span>        <span class="t-step">15,425 tokens</span></span>
+          <span class="t-line indent"><span class="t-dim">Est. cost:</span>    <span class="t-ok">$0.001874</span><span class="typing-cursor"></span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVIDERS -->
+  <section class="providers">
+    <div class="container">
+      <p class="providers-label">Works with any LLM provider</p>
+      <div class="providers-logos">
+        <div class="provider-item">
+          <div class="provider-icon" style="background:rgba(168,85,247,0.1);">
+            <span style="color:var(--purple);">A</span>
+          </div>
+          Anthropic
+        </div>
+        <div class="provider-item">
+          <div class="provider-icon" style="background:rgba(34,197,94,0.1);">
+            <span style="color:var(--green);">O</span>
+          </div>
+          OpenAI
+        </div>
+        <div class="provider-item">
+          <div class="provider-icon" style="background:rgba(59,130,246,0.1);">
+            <span style="color:var(--accent-hover);">G</span>
+          </div>
+          Google
+        </div>
+        <div class="provider-item">
+          <div class="provider-icon" style="background:rgba(245,158,11,0.1);">
+            <span style="color:var(--orange);">G</span>
+          </div>
+          Groq
+        </div>
+        <div class="provider-item">
+          <div class="provider-icon" style="background:rgba(255,255,255,0.05);">
+            <span style="color:var(--text-secondary);">O</span>
+          </div>
+          Ollama
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge badge-blue">Capabilities</div>
+        <h2>Built for real-world<br>mobile automation</h2>
+        <p>An agentic AI loop that perceives, reasons, and acts on any mobile app — no selectors, no scripting.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon fi-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-hover)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </div>
+          <h3>Visual Perception</h3>
+          <p>Parses native UI hierarchy (XML) into structured elements. Understands buttons, inputs, toggles, and text — no brittle selectors needed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon fi-purple">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.57-3.25 3.92"/><path d="M8 6a4 4 0 0 1 8 0"/><path d="M12 22v-6"/><path d="m9 19 3 3 3-3"/><rect x="3" y="10" width="18" height="8" rx="2"/></svg>
+          </div>
+          <h3>Natural Language Goals</h3>
+          <p>Describe what you want in plain English. The AI figures out the sequence of taps, types, scrolls, and swipes to get it done.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon fi-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3>Self-Healing Recovery</h3>
+          <p>Stuck detection, checkpoint rollback, and alternative path suggestions. Adapts when UI changes or actions fail.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon fi-orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </div>
+          <h3>Cross-Platform</h3>
+          <p>Android via UiAutomator2 and iOS via XCUITest. Same agent, same goals — different platforms handled transparently.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon fi-cyan">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          </div>
+          <h3>Record &amp; Replay</h3>
+          <p>Record goal executions and replay without LLM costs. Adaptive replayer handles layout changes across runs.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon fi-red">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Human-in-the-Loop</h3>
+          <p>Pauses for OTP codes, CAPTCHAs, or ambiguous choices. Asks the user and resumes seamlessly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge badge-green">The Loop</div>
+        <h2>Perceive. Reason. Act.</h2>
+        <p>Every step follows the same agentic loop until the goal is done or max steps are reached.</p>
+      </div>
+      <div class="how-grid">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <h3>Perceive</h3>
+          <p>Reads the live screen via appium-mcp's page source. Parses native XML into a structured list of UI elements.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <h3>Reason</h3>
+          <p>Sends the goal + current screen state to an LLM. Gets back a JSON action decision — what to tap, type, or swipe next.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <h3>Act</h3>
+          <p>Executes the chosen action via appium-mcp tools — click, set_value, scroll, swipe, launch, and 26 more.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">4</div>
+          <h3>Repeat</h3>
+          <p>Loops back to step 1 with the new screen state. Continues until the goal is achieved or max steps reached.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section class="architecture" id="architecture">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge badge-purple">Architecture</div>
+        <h2>Pure agentic brain,<br>zero device logic</h2>
+        <p>AppClaw is the decision-maker. appium-mcp handles the device. Clean separation via MCP protocol.</p>
+      </div>
+      <div class="arch-layout">
+        <div class="arch-text">
+          <h3>Powered by the Model Context Protocol</h3>
+          <p>AppClaw consumes appium-mcp's 32 tools over stdio or SSE. It never touches the device directly — it only decides which tool to call next.</p>
+          <div class="arch-features">
+            <div class="arch-feature">
+              <div class="arch-feature-icon fi-blue">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-hover)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              </div>
+              <div class="arch-feature-text">
+                <h4>32 MCP Tools</h4>
+                <p>Tap, type, swipe, screenshot, launch, install, and more</p>
+              </div>
+            </div>
+            <div class="arch-feature">
+              <div class="arch-feature-icon fi-green">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div class="arch-feature-text">
+                <h4>Multi-Provider LLMs</h4>
+                <p>Swap between Claude, GPT-4, Gemini, Groq, or local Ollama</p>
+              </div>
+            </div>
+            <div class="arch-feature">
+              <div class="arch-feature-icon fi-orange">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              </div>
+              <div class="arch-feature-text">
+                <h4>Goal Decomposition</h4>
+                <p>Complex multi-app goals are split into sequential sub-goals</p>
+              </div>
+            </div>
+            <div class="arch-feature">
+              <div class="arch-feature-icon fi-purple">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+              <div class="arch-feature-text">
+                <h4>Cloud or Local Devices</h4>
+                <p>USB, emulator, simulator, or remote device farms via SSE</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="arch-diagram">
+          <div class="arch-box" style="border-color: rgba(59,130,246,0.2);">
+            <div class="arch-box-label" style="color: var(--accent-hover);">
+              <span class="dot" style="background: var(--accent);"></span>
+              AppClaw (TypeScript)
+            </div>
+            <div class="arch-row" style="margin-bottom: 10px;">
+              <span class="arch-chip">Agentic Loop</span>
+              <span class="arch-chip">Perception</span>
+              <span class="arch-chip">Skills</span>
+            </div>
+            <div class="arch-row">
+              <span class="arch-chip">LLM Layer</span>
+              <span class="arch-chip">Recovery</span>
+              <span class="arch-chip">Recorder</span>
+            </div>
+          </div>
+          <div class="arch-arrow">&darr; <span style="font-size: 11px; color: var(--text-tertiary);">MCP Protocol</span> &darr;</div>
+          <div class="arch-box" style="border-color: rgba(34,197,94,0.2);">
+            <div class="arch-box-label" style="color: var(--green);">
+              <span class="dot" style="background: var(--green);"></span>
+              appium-mcp (32 tools)
+            </div>
+            <div class="arch-row">
+              <span class="arch-chip">tap</span>
+              <span class="arch-chip">type</span>
+              <span class="arch-chip">swipe</span>
+              <span class="arch-chip">screenshot</span>
+              <span class="arch-chip">launch</span>
+              <span class="arch-chip">...</span>
+            </div>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div class="arch-box" style="border-color: rgba(245,158,11,0.2);">
+            <div class="arch-box-label" style="color: var(--orange);">
+              <span class="dot" style="background: var(--orange);"></span>
+              Appium
+            </div>
+            <div class="arch-row">
+              <span class="arch-chip">UiAutomator2</span>
+              <span class="arch-chip">XCUITest</span>
+            </div>
+          </div>
+          <div class="arch-arrow">&darr;</div>
+          <div style="text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--text-tertiary); font-size: 12px;">
+            Android / iOS Device
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWCASE -->
+  <section class="showcase">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge badge-orange">Power Features</div>
+        <h2>Beyond simple automation</h2>
+        <p>Built-in intelligence for the hardest parts of mobile automation.</p>
+      </div>
+      <div class="bento-grid">
+        <!-- Wide card -->
+        <div class="bento-card wide">
+          <div class="bento-text">
+            <span class="bento-tag" style="background: rgba(59,130,246,0.1); color: var(--accent-hover);">Smart Actions</span>
+            <h3>16 Agent Actions with Built-in Skills</h3>
+            <p>From simple taps to multi-step compound operations. Smart typing detects non-editable wrappers and finds the real input. submit_message works across WhatsApp, Telegram, Slack, and more.</p>
+            <div class="chip-row">
+              <span class="chip">tap</span>
+              <span class="chip">type</span>
+              <span class="chip">swipe</span>
+              <span class="chip">find_and_tap</span>
+              <span class="chip">read_screen</span>
+              <span class="chip">ask_user</span>
+            </div>
+          </div>
+          <div class="bento-visual">
+            <div><span class="bv-dim">// Smart Type: auto-detects real input</span></div>
+            <div><span class="bv-cyan">smart_type</span> <span class="bv-text">&rarr;</span> <span class="bv-orange">"search_field"</span></div>
+            <div><span class="bv-text">&nbsp;&nbsp;Target is non-editable wrapper</span></div>
+            <div><span class="bv-text">&nbsp;&nbsp;Clicking to navigate...</span></div>
+            <div><span class="bv-text">&nbsp;&nbsp;Re-reading page source...</span></div>
+            <div><span class="bv-blue">&nbsp;&nbsp;Found EditText (id: input_23)</span></div>
+            <div><span class="bv-green">&nbsp;&nbsp;&#10003; Typed into real input field</span></div>
+          </div>
+        </div>
+        <!-- Half cards -->
+        <div class="bento-card">
+          <span class="bento-tag" style="background: var(--green-dim); color: var(--green);">Recording</span>
+          <h3>Record &amp; Adaptive Replay</h3>
+          <p>Record any goal execution and replay it without LLM costs. The replayer doesn't blindly repeat coordinates — it reads the current screen, matches elements, and adapts to layout changes.</p>
+          <div class="chip-row">
+            <span class="chip">--record</span>
+            <span class="chip">--replay</span>
+            <span class="chip">Adaptive</span>
+          </div>
+        </div>
+        <div class="bento-card">
+          <span class="bento-tag" style="background: var(--purple-dim); color: var(--purple);">Planning</span>
+          <h3>Goal Decomposition</h3>
+          <p>Complex multi-app tasks are automatically broken into sequential sub-goals. "Copy the weather and send it on Slack" becomes 4 focused steps, each tracked and executed independently.</p>
+          <div class="chip-row">
+            <span class="chip">--plan</span>
+            <span class="chip">Multi-app</span>
+            <span class="chip">Sub-goals</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div>
+          <div class="stat-num">32</div>
+          <div class="stat-label">MCP tools consumed</div>
+        </div>
+        <div>
+          <div class="stat-num">16</div>
+          <div class="stat-label">Agent actions</div>
+        </div>
+        <div>
+          <div class="stat-num">5</div>
+          <div class="stat-label">LLM providers</div>
+        </div>
+        <div>
+          <div class="stat-num">2</div>
+          <div class="stat-label">Platforms (iOS + Android)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICKSTART -->
+  <section class="quickstart" id="quickstart">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge badge-green">Get Started</div>
+        <h2>Up and running<br>in 60 seconds</h2>
+        <p>Install, configure, connect a device, and run. Four steps to your first AI-automated mobile goal.</p>
+      </div>
+      <div class="qs-layout">
+        <div class="qs-steps">
+          <div class="qs-step">
+            <div class="qs-step-num">1</div>
+            <div class="qs-step-content">
+              <h4>Clone and install</h4>
+              <p>Requires Node.js 18+. Clone the repo, install dependencies, and set up Appium with the driver for your platform.</p>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">2</div>
+            <div class="qs-step-content">
+              <h4>Configure your LLM</h4>
+              <p>Create a <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">.env</code> file and set your provider and API key. Works with Anthropic, OpenAI, Google, Groq, or local Ollama.</p>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">3</div>
+            <div class="qs-step-content">
+              <h4>Connect a device</h4>
+              <p>Plug in an Android device (or start an emulator/iOS simulator). Verify with <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">adb devices</code> and start the Appium server.</p>
+            </div>
+          </div>
+          <div class="qs-step">
+            <div class="qs-step-num">4</div>
+            <div class="qs-step-content">
+              <h4>Run a goal</h4>
+              <p>Pass any goal in plain English, run a declarative YAML flow, or use interactive mode. AppClaw connects to your device and executes autonomously.</p>
+            </div>
+          </div>
+        </div>
+        <div class="qs-terminal">
+          <div class="qs-terminal-bar">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+          </div>
+          <div class="qs-terminal-body">
+            <span class="t-line"><span class="t-dim"># Clone, install, and set up Appium</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">git clone https://github.com/AppiumTestDistribution/appclaw</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">cd appclaw && npm install</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm i -g appium && appium driver install uiautomator2</span></span>
+            <span class="t-line">&nbsp;</span>
+            <span class="t-line"><span class="t-dim"># Create .env with your LLM provider</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">echo</span> <span class="t-string">"LLM_PROVIDER=gemini"</span> <span class="t-cmd">&gt; .env</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">echo</span> <span class="t-string">"LLM_API_KEY=your-key"</span> <span class="t-cmd">&gt;&gt; .env</span></span>
+            <span class="t-line">&nbsp;</span>
+            <span class="t-line"><span class="t-dim"># Verify device is connected</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">adb devices</span></span>
+            <span class="t-line">&nbsp;</span>
+            <span class="t-line"><span class="t-dim"># Run a goal in plain English</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start</span> <span class="t-string">"Open Settings and turn on WiFi"</span></span>
+            <span class="t-line">&nbsp;</span>
+            <span class="t-line"><span class="t-dim"># Or run a declarative YAML flow (no LLM needed)</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start -- --flow</span> <span class="t-step">examples/flows/google-search.yaml</span></span>
+            <span class="t-line">&nbsp;</span>
+            <span class="t-line"><span class="t-dim"># Record, replay, or decompose complex goals</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start -- --record</span> <span class="t-string">"Send hello on WhatsApp"</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start -- --replay</span> <span class="t-step">recordings/rec-*.json</span></span>
+            <span class="t-line"><span class="t-prompt">$</span> <span class="t-cmd">npm start -- --plan</span> <span class="t-string">"Copy weather and send on Slack"</span><span class="typing-cursor"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta-glow"></div>
+    <div class="container">
+      <h2>Ready to automate<br>your mobile apps?</h2>
+      <p>Open source. MIT licensed. Free forever. Start automating any Android or iOS app with AI today.</p>
+      <div class="cta-actions">
+        <a href="https://github.com/AppiumTestDistribution/appclaw" class="btn-hero btn-hero-primary" target="_blank" rel="noopener">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Star on GitHub
+        </a>
+        <div class="install-cmd">
+          <span class="dollar">$</span>
+          <code>git clone https://github.com/AppiumTestDistribution/appclaw</code>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 16px;">MIT License &middot; Free forever &middot; Community driven</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="footer-brand-logo">
+            <div class="nav-logo-icon">
+              <img src="logo.svg" alt="AppClaw logo">
+            </div>
+            <span>AppClaw</span>
+          </div>
+          <p>AI-powered mobile automation agent. Describe a goal in plain English — it figures out the rest.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#quickstart">Get Started</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Developers</h4>
+          <ul>
+            <li><a href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/appium/appium-mcp" target="_blank" rel="noopener">appium-mcp</a></li>
+            <li><a href="https://appium.io" target="_blank" rel="noopener">Appium</a></li>
+            <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP Spec</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Community</h4>
+          <ul>
+            <li><a href="https://github.com/AppiumTestDistribution/appclaw/issues" target="_blank" rel="noopener">Issues</a></li>
+            <li><a href="https://github.com/AppiumTestDistribution/appclaw/discussions" target="_blank" rel="noopener">Discussions</a></li>
+            <li><a href="https://github.com/AppiumTestDistribution/appclaw/blob/main/LICENSE" target="_blank" rel="noopener">License (MIT)</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2025 AppClaw. Open source under MIT License.</p>
+        <div class="footer-socials">
+          <a href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">GitHub</a>
+          <a href="#">Twitter</a>
+          <a href="#">Discord</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Intersection Observer for scroll animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.feature-card, .how-step, .bento-card, .qs-step, .stat-num').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      observer.observe(el);
+    });
+
+    // Copy install command
+    document.querySelector('.install-cmd')?.addEventListener('click', function() {
+      navigator.clipboard.writeText('git clone https://github.com/AppiumTestDistribution/appclaw').then(() => {
+        const original = this.innerHTML;
+        this.style.borderColor = 'rgba(34,197,94,0.3)';
+        setTimeout(() => { this.style.borderColor = ''; }, 1500);
+      });
+    });
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

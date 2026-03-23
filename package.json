@@ -1,0 +1,41 @@
+{
+  "name": "appclaw",
+  "version": "0.1.0",
+  "description": "Agentic AI layer for mobile automation via appium-mcp",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "appclaw": "bin/appclaw.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "dev": "npx tsx --watch src/index.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/openai": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "ai": "^6.0.72",
+    "chalk": "^5.6.2",
+    "df-vision": "file:../device-farm/packages/stark-vision",
+    "dotenv": "^17.3.1",
+    "fast-xml-parser": "^4.5.0",
+    "ollama-ai-provider": "^1.0.0",
+    "sharp": "^0.33.5",
+    "yaml": "^2.8.3",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0"
+  }
+}

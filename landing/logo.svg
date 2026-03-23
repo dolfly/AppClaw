@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Red bug/crab mascot for AppClaw -->
+
+  <!-- Antennae -->
+  <line x1="220" y1="128" x2="200" y2="88" stroke="#e53e3e" stroke-width="10" stroke-linecap="round"/>
+  <line x1="292" y1="128" x2="312" y2="88" stroke="#e53e3e" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Antenna tips -->
+  <line x1="190" y1="82" x2="210" y2="94" stroke="#e53e3e" stroke-width="8" stroke-linecap="round"/>
+  <line x1="322" y1="82" x2="302" y2="94" stroke="#e53e3e" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Side claws / arms -->
+  <!-- Left claw -->
+  <ellipse cx="108" cy="272" rx="30" ry="26" fill="#e53e3e"/>
+  <!-- Right claw -->
+  <ellipse cx="404" cy="272" rx="30" ry="26" fill="#e53e3e"/>
+
+  <!-- Legs (bottom) -->
+  <!-- Left leg -->
+  <rect x="195" y="398" width="14" height="40" rx="7" fill="#e53e3e"/>
+  <!-- Right leg -->
+  <rect x="303" y="398" width="14" height="40" rx="7" fill="#e53e3e"/>
+
+  <!-- Main body (big red circle) -->
+  <circle cx="256" cy="264" r="140" fill="#e53e3e"/>
+
+  <!-- Eyes -->
+  <!-- Left eye (white) -->
+  <circle cx="218" cy="240" r="18" fill="#1a1a2e"/>
+  <circle cx="222" cy="236" r="7" fill="white"/>
+
+  <!-- Right eye (white) -->
+  <circle cx="294" cy="240" r="18" fill="#1a1a2e"/>
+  <circle cx="298" cy="236" r="7" fill="white"/>
+</svg>

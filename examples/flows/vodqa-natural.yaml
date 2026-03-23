@@ -1,0 +1,10 @@
+# Natural-language steps (plain English in YAML list items).
+# Requires the app name to match an installed package label (e.g. "VodQA", "vodqa").
+name: VodQA — login and vertical swiping demo
+---
+- open vodqa app
+- wait 2 s
+- Click on login button
+- Click on Vertical Swiping
+- swipe down
+- done opened vertical swiping and swiped

@@ -1,0 +1,26 @@
+# Open Settings and turn Wi‑Fi ON (Android).
+# Paths differ by OEM — adjust tap strings if your device uses different labels.
+#
+# Samsung-style (Connections → Internet → Wi‑Fi switch):
+#   Matches many Galaxy builds where the Wi‑Fi master switch sits on the Internet screen.
+#
+# Pixel / stock AOSP–style alternative:
+#   Replace "Connections" with "Network & internet", then tap "Internet" or "Wi‑Fi"
+#   until you see the Wi‑Fi toggle, then add a tap that matches visible text on the switch row.
+#
+# If taps miss the toggle (no matching text), enable vision (e.g. STARK_VISION_API_KEY +
+# VISION_LOCATE_PROVIDER=stark) so tap: can fall back to visual locate.
+#
+appId: com.android.settings
+name: Open Settings and turn Wi‑Fi ON
+---
+- launchApp
+- wait: 2
+- tap: "Connections"
+- wait: 1
+- tap: "Internet"
+- wait: 1
+# Top-of-screen Wi‑Fi switch row; if this fails, try tap: "Wi‑Fi" or the exact label your UI shows
+- tap: "Wi‑Fi"
+- wait: 1
+- done: "Wi‑Fi turned on (verify on device)"
