@@ -27,7 +27,7 @@ AppClaw:
   Step 5: Tap Send
   Step 6: Done
 
-  ✅ Goal completed in 6 steps
+  ✅ Goal completed in 6 steps.
 ```
 
 </td>
