@@ -28,6 +28,10 @@ export function androidCreateSessionArgs(config: AppClawConfig): {
     caps["appium:mjpegScreenshotUrl"] = explicitUrl;
   }
 
+  // NOTE: mjpegScalingFactor is applied AFTER session creation via the settings API
+  // (in index.ts) because appium:settings as a capability conflicts with the
+  // appium:settings[...] flat-key format that appium-mcp uses, causing it to be ignored.
+
   if (Object.keys(caps).length === 0) {
     return { platform: "android" };
   }

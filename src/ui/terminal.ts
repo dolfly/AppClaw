@@ -1,18 +1,18 @@
 /**
  * Terminal UI — styled console output for AppClaw.
  *
- * Centralizes all terminal formatting: colors, box drawing,
- * spinners, and structured output.
+ * Minimal chrome, clear hierarchy, compact output.
+ * Inspired by Vercel CLI / pnpm / turbo aesthetics.
  */
 
 import chalk from "chalk";
 
 import { Config } from "../config.js";
 
-// ─── Theme colors ─────────────────────────────────────────
+// ─── Theme ───────────────────────────────────────────────
 
 const theme = {
-  brand:    chalk.hex("#7C6FFF"),      // purple accent
+  brand:    chalk.hex("#7C6FFF"),
   success:  chalk.green,
   error:    chalk.red,
   warn:     chalk.yellow,
@@ -21,23 +21,19 @@ const theme = {
   muted:    chalk.gray,
   info:     chalk.cyan,
   white:    chalk.white,
-  step:     chalk.hex("#6CB6FF"),       // light blue
-  label:    chalk.hex("#9CA3AF"),       // gray label
+  step:     chalk.hex("#6CB6FF"),
+  label:    chalk.hex("#9CA3AF"),
+  // Pill badges (inverse video)
+  badgeSkip:    chalk.bgGreen.black,
+  badgeAdapt:   chalk.bgYellow.black,
+  badgeProceed: chalk.bgCyan.black,
 };
 
-// ─── Box drawing ──────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────
 
-const BOX = {
-  tl: "╭", tr: "╮", bl: "╰", br: "╯",
-  h: "─", v: "│",
-  rule: "─",
-};
-
-function hr(label?: string, width = 50): string {
-  if (!label) return theme.dim(BOX.rule.repeat(width));
-  const pad = width - label.length - 4;
-  const right = Math.max(pad, 2);
-  return theme.dim(`${BOX.rule.repeat(2)} `) + theme.brand.bold(label) + theme.dim(` ${BOX.rule.repeat(right)}`);
+/** Section label — bold colored text, no box drawing */
+function section(label: string): string {
+  return `  ${theme.brand.bold(label)}`;
 }
 
 /** Strip ANSI escape codes to get visible string length */
@@ -46,12 +42,28 @@ function visLen(s: string): number {
   return s.replace(/\x1B\[[0-9;]*m/g, "").length;
 }
 
-// ─── Spinner (Claude Code–style: bold phrase + dim parenthetical) ──
+/** Word-wrap text to maxWidth, returning indented continuation lines */
+function wrapText(text: string, maxWidth: number, indent: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line && line.length + word.length + 1 > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.map((l, i) => (i === 0 ? l : " ".repeat(indent) + l));
+}
+
+// ─── Spinner ─────────────────────────────────────────────
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 let spinnerTimer: ReturnType<typeof setInterval> | null = null;
 let spinnerFrame = 0;
-/** True after startSpinner writes a line until stopSpinner clears it (safe double-stop). */
 let spinnerLineActive = false;
 let spinnerPrimary = "";
 let spinnerDetail: string | undefined;
@@ -65,9 +77,6 @@ function paintSpinnerLine(frame: number, leadingCr: boolean): void {
   process.stdout.write(`${leadingCr ? "\r" : ""}${line}${" ".repeat(pad)}`);
 }
 
-/**
- * Dim context shown after the agent spinner phrase: mode, thinking, model.
- */
 export function formatAgentThinkingDetail(modelName: string): string {
   const mode = Config.AGENT_MODE === "vision" ? "vision" : "dom";
   const think = Config.LLM_THINKING === "on" ? "thinking on" : "thinking off";
@@ -76,15 +85,10 @@ export function formatAgentThinkingDetail(modelName: string): string {
   return `${mode} · ${think} · ${short}`;
 }
 
-/** Static status line before a spinner (hollow bullet + dim text). */
 export function printAgentBullet(message: string): void {
   console.log(`  ${theme.muted("○")} ${theme.dim(message)}`);
 }
 
-/**
- * @param message Short verb phrase (emphasized when `detail` is set).
- * @param detail Optional dim parenthetical, e.g. from `formatAgentThinkingDetail`.
- */
 export function startSpinner(message: string, detail?: string): void {
   stopSpinner();
   spinnerFrame = 0;
@@ -112,47 +116,39 @@ export function stopSpinner(finalMessage?: string): void {
   }
 }
 
-// ─── Header ───────────────────────────────────────────────
+// ─── Header (ASCII art box) ──────────────────────────────
 
 const LOGO_LINES = [
   "▄▀█ █▀█ █▀█ █▀▀ █   ▄▀█ █ █ █",
   "█▀█ █▀▀ █▀▀ █▄▄ █▄▄ █▀█ ▀▄▀▄▀",
 ];
 
-const W = 56; // inner visible width
+const BOX_W = 56;
+const BOX = { tl: "╭", tr: "╮", bl: "╰", br: "╯", h: "─", v: "│" };
 
-/** Box line: pads content to W visible chars, wraps with │ */
-function bx(content: string, visibleLen: number): string {
-  const pad = W - visibleLen;
+function bxLine(content: string, contentVisLen: number): string {
+  const pad = BOX_W - contentVisLen;
   return `  ${theme.dim(BOX.v)} ${content}${" ".repeat(Math.max(pad, 0))}${theme.dim(BOX.v)}`;
+}
+
+function bxAuto(styled: string): string {
+  return bxLine(styled, visLen(styled));
 }
 
 function boxTop(label?: string): string {
   if (label) {
-    // ╭─ Label ──...──╮
-    const inner = W - label.length - 2; // -2 for spaces around label
+    const inner = BOX_W - label.length - 2;
     return `  ${theme.dim(`${BOX.tl}${BOX.h}`)} ${theme.brand.bold(label)} ${theme.dim(BOX.h.repeat(Math.max(inner, 2)) + BOX.tr)}`;
   }
-  return `  ${theme.dim(BOX.tl + BOX.h.repeat(W + 2) + BOX.tr)}`;
+  return `  ${theme.dim(BOX.tl + BOX.h.repeat(BOX_W + 2) + BOX.tr)}`;
 }
 
 function boxBottom(): string {
-  return `  ${theme.dim(BOX.bl + BOX.h.repeat(W + 2) + BOX.br)}`;
-}
-
-function boxDivider(): string {
-  return `  ${theme.dim("├" + BOX.h.repeat(W + 2) + "┤")}`;
+  return `  ${theme.dim(BOX.bl + BOX.h.repeat(BOX_W + 2) + BOX.br)}`;
 }
 
 function boxEmpty(): string {
-  return bx("", 0);
-}
-
-/** Build a box line from a pre-styled string, auto-measuring visible width */
-function bxAuto(styled: string): string {
-  const len = visLen(styled);
-  const pad = W - len;
-  return `  ${theme.dim(BOX.v)} ${styled}${" ".repeat(Math.max(pad, 0))}${theme.dim(BOX.v)}`;
+  return bxLine("", 0);
 }
 
 export function printHeader(version: string = "0.1.0"): void {
@@ -163,8 +159,7 @@ export function printHeader(version: string = "0.1.0"): void {
   for (const line of LOGO_LINES) {
     console.log(bxAuto(`   ${theme.brand(line)}`));
   }
-  // Version right-aligned with 1-char gap from border
-  const vPad = W - vTag.length - 1;
+  const vPad = BOX_W - vTag.length - 1;
   console.log(bxAuto(`${" ".repeat(vPad)}${theme.dim(vTag)} `));
   console.log(boxEmpty());
   console.log(bxAuto(`   ${theme.muted("AI Mobile Testing Agent")}`));
@@ -183,23 +178,22 @@ export function printInteractiveHeader(): void {
   console.log(boxEmpty());
   console.log(bxAuto(`   ${theme.muted("AI Mobile Testing Agent")}`));
   console.log(boxEmpty());
-  console.log(boxDivider());
+  console.log(`  ${theme.dim("├" + BOX.h.repeat(BOX_W + 2) + "┤")}`);
   console.log(boxEmpty());
   console.log(bxAuto(`   ${theme.info("--record")}   ${theme.muted("Record actions for replay")}`));
   console.log(bxAuto(`   ${theme.info("--replay")}   ${theme.muted("Replay a recorded flow")}`));
-  console.log(bxAuto(`   ${theme.info("--flow")}     ${theme.muted("Run steps from a YAML file (no LLM)")}`));
+  console.log(bxAuto(`   ${theme.info("--flow")}     ${theme.muted("Run steps from a YAML file")}`));
   console.log(bxAuto(`   ${theme.info("--plan")}     ${theme.muted("Decompose complex goals")}`));
   console.log(boxEmpty());
   console.log(boxBottom());
   console.log();
 }
 
-// ─── Setup / Config ───────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────
 
 export function printConfig(entries: Array<[string, string]>): void {
   for (const [label, value] of entries) {
-    const paddedLabel = label.padEnd(12);
-    console.log(`  ${theme.label(paddedLabel)} ${theme.white(value)}`);
+    console.log(`  ${theme.label(label.padEnd(14))} ${theme.white(value)}`);
   }
 }
 
@@ -209,18 +203,19 @@ export function printSetupOk(message: string): void {
 
 export function printSetupError(message: string, hint?: string): void {
   console.log(`  ${theme.error("✗")} ${message}`);
-  if (hint) {
-    console.log(`    ${theme.dim(hint)}`);
-  }
+  if (hint) console.log(`    ${theme.dim(hint)}`);
 }
 
-// ─── Goal / Agent ─────────────────────────────────────────
+// ─── Goal ────────────────────────────────────────────────
 
 export function printGoalStart(goal: string, maxSteps: number): void {
   console.log();
-  console.log(`  ${hr("Goal")}`);
-  console.log(`  ${theme.bold(goal)}`);
-  console.log(`  ${theme.dim(`Max ${maxSteps} steps`)}`);
+  console.log(section("Goal"));
+  const wrapped = wrapText(goal, 65, 2);
+  for (const line of wrapped) {
+    console.log(`  ${theme.bold(line)}`);
+  }
+  console.log(`  ${theme.dim(`max ${maxSteps} steps`)}`);
   console.log();
 }
 
@@ -230,24 +225,54 @@ export function printStep(
   toolName: string,
   argsSummary: string
 ): void {
-  const stepNum = theme.dim(`${step}/${maxSteps}`);
+  const counter = theme.dim(`[${step}/${maxSteps}]`.padEnd(8));
+
+  // Friendly display names for meta-tools
+  if (toolName === "find_and_click") {
+    // Extract vision description or selector from args
+    const visionMatch = argsSummary.match(/vision="([^"]+)"/);
+    const selectorMatch = argsSummary.match(/selector="([^"]+)"/);
+    const target = visionMatch?.[1] || selectorMatch?.[1] || argsSummary;
+    const short = target.length > 65 ? target.slice(0, 62) + "…" : target;
+    console.log(`  ${counter}${theme.step("tap")} ${theme.muted(short)}`);
+    return;
+  }
+  if (toolName === "find_and_type") {
+    const visionMatch = argsSummary.match(/vision="([^"]+)"/);
+    const selectorMatch = argsSummary.match(/selector="([^"]+)"/);
+    const textMatch = argsSummary.match(/text="([^"]+)"/);
+    const target = visionMatch?.[1] || selectorMatch?.[1] || "field";
+    const text = textMatch?.[1] || "";
+    const short = target.length > 40 ? target.slice(0, 37) + "…" : target;
+    console.log(`  ${counter}${theme.step("type")} ${theme.muted(`"${text}"`)} ${theme.dim(`→ ${short}`)}`);
+    return;
+  }
+  if (toolName === "done") {
+    const reasonMatch = argsSummary.match(/reason="([^"]+)"/);
+    const reason = reasonMatch?.[1] || argsSummary.replace(/^reason=/, "");
+    const short = reason.length > 65 ? reason.slice(0, 62) + "…" : reason;
+    console.log(`  ${counter}${theme.success("done")} ${theme.dim(short)}`);
+    return;
+  }
+
   const tool = theme.step(toolName);
-  const args = argsSummary ? theme.muted(argsSummary) : "";
-  console.log(`  ${stepNum}  ${tool}${args}`);
+  const args = argsSummary ? ` ${theme.muted(argsSummary)}` : "";
+  console.log(`  ${counter}${tool}${args}`);
 }
 
 export function printStepDetail(message: string): void {
-  console.log(`        ${theme.dim("→")} ${theme.dim(message)}`);
+  console.log(`  ${" ".repeat(8)}${theme.dim("→")} ${theme.dim(message)}`);
 }
 
 export function printStepError(message: string): void {
-  console.log(`        ${theme.error("✗")} ${theme.error(message)}`);
+  console.log(`  ${" ".repeat(8)}${theme.error("✗")} ${theme.error(message)}`);
 }
 
 export function printGoalSuccess(steps: number, reason: string): void {
   console.log();
   console.log(`  ${theme.success("✓")} ${theme.success.bold("Completed")} ${theme.dim(`in ${steps} steps`)}`);
   console.log(`    ${theme.dim(reason)}`);
+  console.log(`  ${theme.dim("─".repeat(50))}`);
 }
 
 export function printGoalFailed(reason: string): void {
@@ -255,21 +280,50 @@ export function printGoalFailed(reason: string): void {
   console.log(`  ${theme.error("✗")} ${theme.error.bold("Failed")} ${theme.dim("—")} ${theme.dim(reason)}`);
 }
 
-// ─── Plan mode ────────────────────────────────────────────
+// ─── Plan ────────────────────────────────────────────────
 
 export function printPlanStart(): void {
-  startSpinner("Decomposing your goal…", "planner");
+  startSpinner("Decomposing goal…", "planner");
 }
 
 export function printPlan(subGoals: Array<{ goal: string }>, reasoning: string): void {
   console.log();
-  console.log(`  ${hr("Plan")}`);
-  console.log();
+  console.log(section("Plan"));
   for (let i = 0; i < subGoals.length; i++) {
     console.log(`  ${theme.dim(`${i + 1}.`)} ${subGoals[i].goal}`);
   }
   console.log();
-  console.log(`  ${theme.dim(reasoning)}`);
+  // Truncate reasoning to 2 lines max
+  const lines = wrapText(reasoning, 72, 2);
+  const shown = lines.slice(0, 2);
+  for (const line of shown) {
+    console.log(`  ${theme.dim(line)}`);
+  }
+  console.log();
+}
+
+/** Compact inline plan progress — shown before each sub-goal */
+export function printPlanContext(
+  overallGoal: string,
+  _currentGoal: string,
+  allGoals: Array<{ goal: string; status: string }>,
+  currentIndex: number
+): void {
+  console.log();
+  console.log(section("Progress"));
+  console.log(`  ${theme.label("Goal:")} ${theme.white(overallGoal.length > 60 ? overallGoal.slice(0, 57) + "…" : overallGoal)}`);
+  console.log();
+  for (let i = 0; i < allGoals.length; i++) {
+    const sg = allGoals[i];
+    const num = `${i + 1}.`;
+    if (sg.status === "completed") {
+      console.log(`  ${theme.success("✓")} ${theme.dim(num)} ${theme.dim(sg.goal)}`);
+    } else if (i === currentIndex) {
+      console.log(`  ${theme.brand("▸")} ${theme.white(num)} ${theme.white.bold(sg.goal)}`);
+    } else {
+      console.log(`  ${theme.dim("○")} ${theme.dim(num)} ${theme.dim(sg.goal)}`);
+    }
+  }
   console.log();
 }
 
@@ -279,100 +333,73 @@ export function printSubGoalHeader(
   goal: string,
   allGoals: Array<{ goal: string; status: string }>
 ): void {
-  console.log();
-  console.log(`  ${hr(`${index + 1}/${total}: ${goal}`)}`);
-  // Show plan progress: completed, current, upcoming
-  if (allGoals.length > 1) {
-    console.log();
-    for (let i = 0; i < allGoals.length; i++) {
-      const sg = allGoals[i];
-      if (sg.status === "completed") {
-        console.log(`  ${theme.success("✓")} ${theme.dim(`${i + 1}. ${sg.goal}`)}`);
-      } else if (i === index) {
-        console.log(`  ${theme.brand("▸")} ${theme.white.bold(`${i + 1}. ${sg.goal}`)}`);
-      } else {
-        console.log(`  ${theme.dim("○")} ${theme.dim(`${i + 1}. ${sg.goal}`)}`);
-      }
-    }
-  }
+  // Delegate to printPlanContext for consistency
+  printPlanContext("", goal, allGoals, index);
 }
 
 export function printPlanSummary(
   subGoals: Array<{ goal: string; status: string; result?: string }>
 ): void {
   console.log();
-  console.log(`  ${hr("Summary")}`);
+  console.log(section("Summary"));
+  const passed = subGoals.filter(sg => sg.status === "completed").length;
   console.log();
   for (let i = 0; i < subGoals.length; i++) {
     const sg = subGoals[i];
     const icon = sg.status === "completed" ? theme.success("✓") : theme.error("✗");
-    const text = sg.status === "completed" ? theme.white(sg.goal) : theme.dim(sg.goal);
-    console.log(`  ${icon} ${theme.dim(`${i + 1}.`)} ${text}`);
-    if (sg.result) {
-      console.log(`       ${theme.dim(sg.result)}`);
-    }
+    const goalText = sg.goal.length > 50 ? sg.goal.slice(0, 47) + "…" : sg.goal;
+    const result = sg.result
+      ? theme.dim(sg.result.length > 50 ? sg.result.slice(0, 47) + "…" : sg.result)
+      : "";
+    console.log(`  ${icon} ${theme.dim(`${i + 1}.`)} ${theme.white(goalText)}`);
+    if (result) console.log(`       ${result}`);
   }
+  console.log();
+  const allOk = passed === subGoals.length;
+  const icon = allOk ? theme.success("✓") : theme.warn("!");
+  const msg = allOk
+    ? theme.success.bold(`${passed}/${subGoals.length} completed`)
+    : theme.warn.bold(`${passed}/${subGoals.length} completed`);
+  console.log(`  ${icon} ${msg}`);
   console.log();
 }
 
-// ─── Plan context ─────────────────────────────────────────
+// ─── Orchestrator badges ─────────────────────────────────
 
-export function printPlanContext(
-  overallGoal: string,
-  _currentGoal: string,
-  allGoals: Array<{ goal: string; status: string; result?: string }>,
-  currentIndex: number
-): void {
-  console.log();
-  console.log(`  ${hr("Plan Context")}`);
-  console.log();
-
-  // Overall goal — word-wrap if long
-  const goalPrefix = theme.label("Goal: ");
-  const maxGoalLen = 60;
-  if (overallGoal.length > maxGoalLen) {
-    const words = overallGoal.split(" ");
-    let line = "";
-    let first = true;
-    for (const word of words) {
-      if (line.length + word.length + 1 > maxGoalLen) {
-        console.log(`  ${first ? goalPrefix : "        "}${theme.white(line)}`);
-        line = word;
-        first = false;
-      } else {
-        line = line ? `${line} ${word}` : word;
-      }
-    }
-    if (line) console.log(`  ${first ? goalPrefix : "        "}${theme.white(line)}`);
-  } else {
-    console.log(`  ${goalPrefix}${theme.white(overallGoal)}`);
-  }
-
-  console.log();
-
-  // Sub-goals with status
-  for (let i = 0; i < allGoals.length; i++) {
-    const sg = allGoals[i];
-    const num = theme.dim(`${i + 1}.`);
-
-    if (sg.status === "completed") {
-      console.log(`  ${theme.success("✓")} ${num} ${theme.dim(sg.goal)}`);
-    } else if (i === currentIndex) {
-      console.log(`  ${theme.brand("▸")} ${num} ${theme.white.bold(sg.goal)}`);
-    } else {
-      console.log(`  ${theme.dim("○")} ${num} ${theme.dim(sg.goal)}`);
-    }
-  }
-
-  console.log();
+export function printOrchestratorSkip(subGoal: string, reason: string): void {
+  const badge = theme.badgeSkip(" SKIP ");
+  const goalShort = subGoal.length > 55 ? subGoal.slice(0, 52) + "…" : subGoal;
+  console.log(`  ${badge} ${theme.dim(goalShort)}`);
+  console.log(`    ${theme.dim(reason.length > 80 ? reason.slice(0, 77) + "…" : reason)}`);
 }
 
-// ─── Replay mode ──────────────────────────────────────────
+export function printOrchestratorRewrite(original: string, rewritten: string): void {
+  const badge = theme.badgeAdapt(" ADAPT ");
+  const origShort = original.length > 50 ? original.slice(0, 47) + "…" : original;
+  console.log(`  ${badge} ${theme.dim(origShort)}`);
+  console.log(`    ${theme.brand("→")} ${theme.white.bold(rewritten.length > 70 ? rewritten.slice(0, 67) + "…" : rewritten)}`);
+}
+
+export function printOrchestratorProceed(subGoal: string): void {
+  const badge = theme.badgeProceed(" NEXT ");
+  console.log(`  ${badge} ${theme.white(subGoal)}`);
+}
+
+export function printScreenReadiness(issues: string[], suggestedAction?: string): void {
+  console.log(`  ${theme.warn("⚠")} ${theme.warn("Screen not ready")}`);
+  for (const issue of issues) {
+    console.log(`    ${theme.dim("•")} ${theme.dim(issue)}`);
+  }
+  if (suggestedAction) {
+    console.log(`    ${theme.brand("→")} ${theme.white(suggestedAction)}`);
+  }
+}
+
+// ─── Replay / Flow ───────────────────────────────────────
 
 export function printReplayHeader(filepath: string): void {
   console.log();
-  console.log(`  ${hr("Replay")}`);
-  console.log(`  ${theme.dim(filepath)}`);
+  console.log(`  ${theme.brand.bold("Replay")} ${theme.dim(filepath)}`);
 }
 
 export function printReplayGoal(goal: string, totalSteps: number): void {
@@ -387,24 +414,24 @@ export function printReplayStep(
   adapted: boolean,
   success: boolean
 ): void {
-  const stepNum = theme.dim(`${step}/${total}`);
+  const counter = theme.dim(`[${step}/${total}]`.padEnd(8));
   const tool = theme.step(toolName);
-  const badge = adapted ? theme.info(" adapted") : "";
-  const status = success ? theme.success(" ok") : theme.error(" failed");
-  console.log(`  ${stepNum}  ${tool}${badge}${status}`);
+  const badges: string[] = [];
+  if (adapted) badges.push(theme.info(" adapted"));
+  badges.push(success ? theme.success(" ok") : theme.error(" failed"));
+  console.log(`  ${counter}${tool}${badges.join("")}`);
 }
 
 export function printYamlFlowHeader(filepath: string): void {
   console.log();
-  console.log(`  ${hr("YAML flow")}`);
-  console.log(`  ${theme.dim(filepath)}`);
+  console.log(`  ${theme.brand.bold("Flow")} ${theme.dim(filepath)}`);
 }
 
 export function printFlowStep(step: number, total: number, label: string, success: boolean): void {
-  const stepNum = theme.dim(`${step}/${total}`);
+  const counter = theme.dim(`[${step}/${total}]`.padEnd(8));
   const line = theme.step(label);
   const status = success ? theme.success(" ok") : theme.error(" failed");
-  console.log(`  ${stepNum}  ${line}${status}`);
+  console.log(`  ${counter}${line}${status}`);
 }
 
 export function printReplayResult(
@@ -412,18 +439,18 @@ export function printReplayResult(
   total: number,
   adapted: number
 ): void {
-  const allPassed = passed === total;
   console.log();
+  const allPassed = passed === total;
   const icon = allPassed ? theme.success("✓") : theme.warn("!");
   const status = allPassed
     ? theme.success.bold("All steps passed")
     : theme.warn.bold(`${passed}/${total} passed`);
-  const adaptedNote = adapted > 0 ? theme.dim(`, ${adapted} adapted`) : "";
+  const adaptedNote = adapted > 0 ? theme.dim(` (${adapted} adapted)`) : "";
   console.log(`  ${icon} ${status}${adaptedNote}`);
   console.log();
 }
 
-// ─── Status / misc ────────────────────────────────────────
+// ─── Status / misc ───────────────────────────────────────
 
 export function printWarning(message: string): void {
   console.log(`  ${theme.warn("!")} ${theme.warn(message)}`);
@@ -433,35 +460,9 @@ export function printInfo(message: string): void {
   console.log(`  ${theme.info("ℹ")} ${theme.dim(message)}`);
 }
 
-export function printOrchestratorSkip(subGoal: string, reason: string): void {
-  console.log(`  ${theme.success("⏭")} ${theme.success("SKIP")} ${theme.white(subGoal)}`);
-  console.log(`    ${theme.dim(reason)}`);
-}
-
-export function printOrchestratorRewrite(original: string, rewritten: string): void {
-  console.log(`  ${theme.warn("✎")} ${theme.warn("ADAPT")} ${theme.dim(original)}`);
-  console.log(`    ${theme.brand("→")} ${theme.white.bold(rewritten)}`);
-}
-
-export function printOrchestratorProceed(subGoal: string): void {
-  console.log(`  ${theme.step("▶")} ${theme.step("PROCEED")} ${theme.white(subGoal)}`);
-}
-
-export function printScreenReadiness(issues: string[], suggestedAction?: string): void {
-  console.log(`  ${theme.warn("⚠")} ${theme.warn("SCREEN NOT READY")} — issues detected:`);
-  for (const issue of issues) {
-    console.log(`    ${theme.dim("•")} ${theme.dim(issue)}`);
-  }
-  if (suggestedAction) {
-    console.log(`    ${theme.brand("→")} ${theme.white(suggestedAction)}`);
-  }
-}
-
 export function printError(message: string, detail?: string): void {
   console.log(`  ${theme.error("✗")} ${message}`);
-  if (detail) {
-    console.log(`    ${theme.dim(detail)}`);
-  }
+  if (detail) console.log(`    ${theme.dim(detail)}`);
 }
 
 export function printFileSaved(label: string, filepath: string): void {
@@ -469,7 +470,7 @@ export function printFileSaved(label: string, filepath: string): void {
 }
 
 export function printStuck(step: number): void {
-  console.log(`  ${theme.warn("!")} ${theme.warn("Stuck detected")} ${theme.dim(`at step ${step}`)}`);
+  console.log(`  ${theme.warn("!")} ${theme.warn("Stuck")} ${theme.dim(`at step ${step}`)}`);
 }
 
 export function printRecovery(message: string): void {
@@ -480,7 +481,7 @@ export function printPreprocessor(message: string): void {
   printStepDetail(message);
 }
 
-// ─── HITL ─────────────────────────────────────────────────
+// ─── HITL ────────────────────────────────────────────────
 
 export function formatHITLPrompt(type: string, question: string, options?: string[]): string {
   let prompt = `\n  ${theme.info("?")} ${theme.info(`[${type.toUpperCase()}]`)} ${question}`;
@@ -502,9 +503,7 @@ export function printTimeout(): void {
 export function printStepTokens(inputTokens: number, outputTokens: number): void {
   if (!Config.SHOW_TOKEN_USAGE) return;
   const total = inputTokens + outputTokens;
-  console.log(
-    `        ${theme.dim("⟠")} ${theme.dim(`tokens: ${total}`)} ${theme.dim(`(in: ${inputTokens}, out: ${outputTokens})`)}`
-  );
+  console.log(`  ${" ".repeat(8)}${theme.dim(`⟠ ${total} tokens (in: ${inputTokens} out: ${outputTokens})`)}`);
 }
 
 export function printTokenSummary(
@@ -514,14 +513,14 @@ export function printTokenSummary(
   modelName: string
 ): void {
   if (!Config.SHOW_TOKEN_USAGE) return;
-  const totalTokens = totalInput + totalOutput;
+  const total = totalInput + totalOutput;
   console.log();
-  console.log(`  ${hr("Token Usage")}`);
-  console.log(`  ${theme.label("Model:")}        ${theme.white(modelName)}`);
-  console.log(`  ${theme.label("Input:")}        ${theme.white(totalInput.toLocaleString())} tokens`);
-  console.log(`  ${theme.label("Output:")}       ${theme.white(totalOutput.toLocaleString())} tokens`);
-  console.log(`  ${theme.label("Total:")}        ${theme.white(totalTokens.toLocaleString())} tokens`);
-  console.log(`  ${theme.label("Est. cost:")}    ${theme.success(`$${cost.toFixed(6)}`)}`);
+  console.log(
+    `  ${theme.label("Tokens")} ${theme.white(total.toLocaleString())}` +
+    ` ${theme.dim(`(in: ${totalInput.toLocaleString()} out: ${totalOutput.toLocaleString()})`)}` +
+    ` ${theme.dim("·")} ${theme.success(`$${cost.toFixed(4)}`)}` +
+    ` ${theme.dim("·")} ${theme.dim(modelName)}`
+  );
 }
 
 // Re-export theme for ad-hoc use

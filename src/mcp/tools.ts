@@ -18,7 +18,7 @@ function logVisionLocateBackend(
   description: string,
   detail?: string
 ): void {
-  if (!Config.VISION_LOCATE_LOG) return;
+  if (process.env.MCP_DEBUG !== "1" && process.env.MCP_DEBUG !== "true") return;
   const label =
     backend === "stark"
       ? "stark-vision (df-vision + Gemini)"

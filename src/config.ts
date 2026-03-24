@@ -11,16 +11,16 @@ const envSchema = z.object({
   MCP_PORT: z.coerce.number().default(8080),
 
   /**
-   * Android UiAutomator2: appium:mjpegScreenshotUrl — set only after you confirm the URL
-   * works from the Appium host (adb reverse, path, etc.). Empty = omit (recommended default).
+   * Android UiAutomator2: appium:mjpegScreenshotUrl — MJPEG stream URL for faster screenshots.
+   * Default: http://127.0.0.1:7810 (matches default mjpegServerPort).
    */
-  APPIUM_MJPEG_SCREENSHOT_URL: z.string().default(""),
+  APPIUM_MJPEG_SCREENSHOT_URL: z.string().default("http://127.0.0.1:7810"),
 
   /**
-   * Android UiAutomator2: appium:mjpegServerPort — 0 = off (normal screenshots, default).
-   * Optional faster path; use a free port per session. Does not set mjpegScreenshotUrl.
+   * Android UiAutomator2: appium:mjpegServerPort — port for the MJPEG screenshot server.
+   * Default: 7810. Set to 0 to disable MJPEG and use normal screenshots.
    */
-  APPIUM_MJPEG_SERVER_PORT: z.coerce.number().default(0),
+  APPIUM_MJPEG_SERVER_PORT: z.coerce.number().default(7810),
 
   MAX_STEPS: z.coerce.number().default(30),
   STEP_DELAY: z.coerce.number().default(500),

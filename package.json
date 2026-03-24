@@ -25,13 +25,14 @@
     "@modelcontextprotocol/sdk": "^1.22.0",
     "ai": "^6.0.72",
     "chalk": "^5.6.2",
-    "df-vision": "file:../device-farm/packages/stark-vision",
+    "df-vision": "1.1.71",
     "dotenv": "^17.3.1",
     "fast-xml-parser": "^4.5.0",
     "ollama-ai-provider": "^1.0.0",
     "sharp": "^0.33.5",
     "yaml": "^2.8.3",
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "mjpeg-consumer": "2.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",

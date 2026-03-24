@@ -14,6 +14,7 @@ import { loadConfig } from "./config.js";
 import { createMCPClient } from "./mcp/client.js";
 import { extractText } from "./mcp/tools.js";
 import { androidCreateSessionArgs } from "./mcp/session-caps.js";
+import { setDeviceScreenSize } from "./vision/window-size.js";
 import { createLLMProvider, buildModel, buildThinkingOptions } from "./llm/provider.js";
 import { getScreenState } from "./perception/screen.js";
 import { AppResolver } from "./agent/app-resolver.js";
@@ -227,6 +228,28 @@ async function main() {
       if (resultText.toLowerCase().includes("error") || resultText.toLowerCase().includes("failed")) {
         throw new Error(resultText);
       }
+
+      // Get the real physical screen size from device info.
+      // The MCP tool appium_mobile_get_device_info calls /appium/device/info
+      // which returns realDisplaySize (e.g. "720x1600") — physical pixels.
+      try {
+        const result = await mcp.callTool("appium_mobile_get_device_info", {});
+        const text = extractText(result);
+        // Match realDisplaySize in the response
+        const sizeMatch = text.match(/realDisplaySize['":\s]+(\d+x\d+)/i);
+        if (sizeMatch) {
+          setDeviceScreenSize(sizeMatch[1]);
+        } else {
+          // Try JSON parse
+          try {
+            const info = JSON.parse(text);
+            if (info.realDisplaySize) setDeviceScreenSize(info.realDisplaySize);
+          } catch { /* not JSON */ }
+        }
+      } catch {
+        // appium_mobile_get_device_info not available — will fall back to other methods
+      }
+
       ui.stopSpinner();
       ui.printSetupOk("Appium session created");
     } catch (err: any) {
