@@ -6,7 +6,7 @@
  * tool names or manual sync required.
  */
 
-import { generateText, tool, jsonSchema, type Tool } from "ai";
+import { generateText, streamText, tool, jsonSchema, type Tool } from "ai";
 import { z } from "zod";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -54,9 +54,19 @@ export interface ToolCallDecision {
   usage?: TokenUsage;
 }
 
+/** Streaming callback for live reasoning display */
+export interface StreamCallbacks {
+  /** Called when reasoning text starts streaming */
+  onTextStart?: () => void;
+  /** Called with each chunk of reasoning text */
+  onTextChunk?: (text: string) => void;
+  /** Called when reasoning streaming is complete */
+  onDone?: () => void;
+}
+
 export interface LLMProvider {
   supportsVision: boolean;
-  getDecision(context: AgentContext): Promise<ToolCallDecision>;
+  getDecision(context: AgentContext, stream?: StreamCallbacks): Promise<ToolCallDecision>;
   /** Record an action and its result for history injection into future prompts */
   feedToolResult(result: string): void;
   /** Reset action history (e.g., between sub-goals) */
@@ -283,7 +293,8 @@ export function createLLMProvider(
   return {
     supportsVision,
 
-    async getDecision(context: AgentContext): Promise<ToolCallDecision> {
+    async getDecision(context: AgentContext, callbacks?: StreamCallbacks): Promise<ToolCallDecision> {
+      // Build prompt and prepare screenshot in parallel
       const systemPrompt = buildSystemPrompt(
         context.platform,
         isVisionLocateEnabledFromConfig(config),
@@ -291,14 +302,13 @@ export function createLLMProvider(
         Object.keys(allTools).length
       );
 
-      // Inject action history into user message for cross-turn context
       let userMessage = buildUserMessage(context);
       if (actionHistory.length > 0) {
         const historyBlock = actionHistory.slice(-MAX_HISTORY_ENTRIES).join("\n");
         userMessage = `ACTION_HISTORY (your previous actions — do NOT repeat failed ones):\n${historyBlock}\n\n${userMessage}`;
       }
 
-      // Only include screenshot if it's valid base64 data (PNG/JPEG prefix from Appium MCP)
+      // Prepare screenshot async (overlaps with prompt construction above)
       const rawShot = context.screenshot;
       const couldBeImage =
         Boolean(rawShot) &&
@@ -309,23 +319,119 @@ export function createLLMProvider(
         : undefined;
       const hasValidScreenshot = Boolean(imageForLlm);
 
+      const messages = [
+        {
+          role: "user" as const,
+          content: hasValidScreenshot
+            ? [
+                { type: "text" as const, text: userMessage },
+                { type: "image" as const, image: imageForLlm! },
+              ]
+            : userMessage,
+        },
+      ];
+
+      // Use streaming when callbacks are provided for live reasoning display.
+      // Two-phase approach: most models (Gemini, etc.) don't stream text before
+      // tool calls. So we first stream a reasoning-only call (no tools), then
+      // make the actual tool call with the reasoning as context.
+      if (callbacks) {
+        // ── Phase 1: Stream reasoning (no tools, short response) ──
+        callbacks.onTextStart?.();
+        const reasoningPrompt =
+          `You are analyzing a mobile screen to decide the next action.\n\n` +
+          `${userMessage}\n\n` +
+          `Describe in 2-3 sentences: What do you see on screen? What is the current state? What action should be taken next and why?`;
+
+        const reasonStream = streamText({
+          model: model as any,
+          system: systemPrompt,
+          maxOutputTokens: 200,
+          // No tools — forces pure text output that can be streamed
+          messages: [
+            {
+              role: "user" as const,
+              content: hasValidScreenshot
+                ? [
+                    { type: "text" as const, text: reasoningPrompt },
+                    { type: "image" as const, image: imageForLlm! },
+                  ]
+                : reasoningPrompt,
+            },
+          ],
+        });
+
+        let reasoningText = "";
+        for await (const chunk of reasonStream.textStream) {
+          reasoningText += chunk;
+          callbacks.onTextChunk?.(chunk);
+        }
+        callbacks.onDone?.();
+
+        const reasonUsage = await reasonStream.usage;
+
+        // ── Phase 2: Tool call (non-streaming, fast) ──
+        // Inject reasoning so the model has its own analysis as context
+        const enrichedMessage = `ANALYSIS:\n${reasoningText}\n\n${userMessage}\n\nBased on your analysis above, call the appropriate tool now.`;
+
+        const result = await generateText({
+          model: model as any,
+          system: systemPrompt,
+          tools: allTools,
+          toolChoice: "required" as const,
+          ...(thinkingOptions ? { providerOptions: thinkingOptions } : {}),
+          messages: [
+            {
+              role: "user" as const,
+              content: hasValidScreenshot
+                ? [
+                    { type: "text" as const, text: enrichedMessage },
+                    { type: "image" as const, image: imageForLlm! },
+                  ]
+                : enrichedMessage,
+            },
+          ],
+        });
+
+        const extracted = extractUsageFromGenerateTextResult(result);
+        const usage: TokenUsage = {
+          inputTokens: extracted.inputTokens + (reasonUsage?.inputTokens ?? 0),
+          outputTokens: extracted.outputTokens + (reasonUsage?.outputTokens ?? 0),
+          totalTokens: extracted.totalTokens + ((reasonUsage?.inputTokens ?? 0) + (reasonUsage?.outputTokens ?? 0)),
+        };
+
+        const toolCall = result.toolCalls?.[0];
+        if (!toolCall) {
+          return {
+            toolName: "done",
+            args: { reason: result.text || reasoningText || "No action decided" },
+            reasoning: reasoningText,
+            usage,
+          };
+        }
+
+        const toolArgs = "args" in toolCall
+          ? (toolCall as any).args
+          : (toolCall as any).input;
+
+        lastToolName = toolCall.toolName;
+
+        return {
+          toolName: toolCall.toolName,
+          args: (toolArgs ?? {}) as Record<string, unknown>,
+          reasoning: reasoningText || undefined,
+          usage,
+        };
+      }
+
+      // Non-streaming fallback — uses toolChoice "required" for reliability
       const result = await generateText({
         model: model as any,
         system: systemPrompt,
         tools: allTools,
-        toolChoice: "required",
+        toolChoice: "required" as const,
         ...(thinkingOptions ? { providerOptions: thinkingOptions } : {}),
-        messages: [
-          {
-            role: "user" as const,
-            content: hasValidScreenshot
-              ? [
-                  { type: "text" as const, text: userMessage },
-                  { type: "image" as const, image: imageForLlm! },
-                ]
-              : userMessage,
-          },
-        ],
+        messages,
       });
 
       // Prefer totalUsage + raw Gemini usageMetadata — some models omit fields the SDK maps to 0

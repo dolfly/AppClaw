@@ -192,4 +192,4 @@ Each step, AppClaw:
 
 ## License
 
-MIT
+Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text.

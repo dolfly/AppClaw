@@ -42,7 +42,7 @@ async function main() {
   });
 
   const page = await browser.newPage();
-  await page.setViewport({ width: 420, height: 820, deviceScaleFactor: 2 });
+  await page.setViewport({ width: 360, height: 760, deviceScaleFactor: 2 });
   await page.goto(`file://${HTML_FILE}`, { waitUntil: 'networkidle0' });
 
   // Wait for fonts to load
@@ -53,7 +53,7 @@ async function main() {
     const frameNum = String(i).padStart(4, '0');
     await page.screenshot({
       path: join(FRAMES_DIR, `frame-${frameNum}.png`),
-      clip: { x: 0, y: 0, width: 420, height: 820 },
+      clip: { x: 0, y: 0, width: 360, height: 760 },
     });
 
     // Wait for next frame
@@ -75,7 +75,7 @@ async function main() {
   // Generate palette for better color quality
   execSync(
     `ffmpeg -y -framerate ${FPS} -i "${FRAMES_DIR}/frame-%04d.png" ` +
-    `-vf "fps=${FPS},scale=420:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" ` +
+    `-vf "fps=${FPS},scale=360:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" ` +
     `"${palettePath}"`,
     { stdio: 'pipe' }
   );
@@ -84,7 +84,7 @@ async function main() {
   execSync(
     `ffmpeg -y -framerate ${FPS} -i "${FRAMES_DIR}/frame-%04d.png" ` +
     `-i "${palettePath}" ` +
-    `-lavfi "fps=${FPS},scale=420:-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3" ` +
+    `-lavfi "fps=${FPS},scale=360:-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3" ` +
     `"${OUTPUT_GIF}"`,
     { stdio: 'pipe' }
   );

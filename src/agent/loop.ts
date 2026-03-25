@@ -275,8 +275,21 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
     };
 
     let decision: ToolCallDecision;
+    let streamingStarted = false;
     try {
-      decision = await llm.getDecision(context);
+      decision = await llm.getDecision(context, {
+        onTextStart() {
+          streamingStarted = true;
+          ui.stopSpinner();
+          ui.startStreaming("Reasoning");
+        },
+        onTextChunk(text) {
+          ui.streamChunk(text);
+        },
+        onDone() {
+          ui.stopStreaming();
+        },
+      });
     } catch (err: any) {
       const errName = err?.name ?? "";
       const errMsg = err?.message ?? "";
@@ -290,6 +303,7 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
         err?.statusCode === 401 ||
         err?.statusCode === 404
       ) {
+        ui.stopStreaming();
         ui.stopSpinner();
         ui.printError("Fatal LLM error", err.message ?? String(err));
         return {
@@ -299,6 +313,7 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
           history,
         };
       }
+      ui.stopStreaming();
       ui.stopSpinner();
       ui.printError(`Step ${step + 1}: LLM error`, String(err));
       lastResult = `LLM call failed: ${err}`;
@@ -307,6 +322,12 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
 
     // ─── 4b. LOG THE DECISION + TOKENS ──────────────────
     ui.stopSpinner();
+
+    // If reasoning text is available but wasn't streamed live, show it now
+    if (decision.reasoning && !streamingStarted) {
+      ui.printReasoning(decision.reasoning);
+    }
+
     const argsSummary = formatArgs(decision);
     ui.printStep(step + 1, maxSteps, decision.toolName, argsSummary);
 

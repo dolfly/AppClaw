@@ -70,7 +70,7 @@ const envSchema = z.object({
   /** Enable extended thinking/reasoning for supported providers (anthropic, gemini, openai) */
   LLM_THINKING: z.enum(["on", "off"]).default("on"),
   /** Max tokens the model can use for thinking (budget). Higher = deeper reasoning but slower + more expensive. */
-  LLM_THINKING_BUDGET: z.coerce.number().default(4096),
+  LLM_THINKING_BUDGET: z.coerce.number().default(1024),
 
   /**
    * If > 0, screenshots sent to the agent/planner LLM are downscaled so max(width,height) ≤ this value (aspect preserved).

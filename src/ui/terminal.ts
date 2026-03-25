@@ -6,6 +6,8 @@
  */
 
 import chalk from "chalk";
+import cliSpinners from "cli-spinners";
+import readline from "node:readline";
 
 import { Config } from "../config.js";
 
@@ -61,20 +63,23 @@ function wrapText(text: string, maxWidth: number, indent: number): string[] {
 
 // ─── Spinner ─────────────────────────────────────────────
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER = cliSpinners.dots;
 let spinnerTimer: ReturnType<typeof setInterval> | null = null;
 let spinnerFrame = 0;
 let spinnerLineActive = false;
 let spinnerPrimary = "";
 let spinnerDetail: string | undefined;
 
-function paintSpinnerLine(frame: number, leadingCr: boolean): void {
-  const sym = theme.brand(SPINNER_FRAMES[frame]);
+function paintSpinnerLine(frame: number, overwrite: boolean): void {
+  const sym = theme.brand(SPINNER.frames[frame % SPINNER.frames.length]);
   const line = spinnerDetail
     ? `  ${sym} ${theme.step.bold(spinnerPrimary)} ${theme.dim(`(${spinnerDetail})`)}`
     : `  ${sym} ${theme.dim(spinnerPrimary)}`;
-  const pad = Math.max(0, 100 - visLen(line));
-  process.stdout.write(`${leadingCr ? "\r" : ""}${line}${" ".repeat(pad)}`);
+  if (overwrite) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+  }
+  process.stdout.write(line);
 }
 
 export function formatAgentThinkingDetail(modelName: string): string {
@@ -89,17 +94,28 @@ export function printAgentBullet(message: string): void {
   console.log(`  ${theme.muted("○")} ${theme.dim(message)}`);
 }
 
+/** Update spinner text without restarting the animation */
+export function updateSpinner(message?: string, detail?: string): void {
+  if (!spinnerLineActive) return;
+  if (message !== undefined) spinnerPrimary = message;
+  if (detail !== undefined) spinnerDetail = detail;
+  paintSpinnerLine(spinnerFrame, true);
+}
+
 export function startSpinner(message: string, detail?: string): void {
   stopSpinner();
   spinnerFrame = 0;
   spinnerLineActive = true;
   spinnerPrimary = message;
   spinnerDetail = detail;
-  paintSpinnerLine(0, false);
+
+  // Hide cursor, paint initial frame, then animate
+  process.stdout.write("\x1B[?25l"); // hide cursor
+  paintSpinnerLine(spinnerFrame, false);
   spinnerTimer = setInterval(() => {
-    spinnerFrame = (spinnerFrame + 1) % SPINNER_FRAMES.length;
+    spinnerFrame = (spinnerFrame + 1) % SPINNER.frames.length;
     paintSpinnerLine(spinnerFrame, true);
-  }, 80);
+  }, SPINNER.interval);
 }
 
 export function stopSpinner(finalMessage?: string): void {
@@ -109,11 +125,145 @@ export function stopSpinner(finalMessage?: string): void {
   }
   if (spinnerLineActive) {
     spinnerLineActive = false;
-    process.stdout.write("\r" + " ".repeat(100) + "\r");
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write("\x1B[?25h"); // show cursor
     if (finalMessage) {
       process.stdout.write(finalMessage + "\n");
     }
   }
+}
+
+// ─── Streaming reasoning display ─────────────────────────
+
+const STREAM_MAX_LINES = 5;     // Max visible lines during live streaming
+const STREAM_LINE_WIDTH = 72;   // Max chars per line before wrapping
+let streamLineCount = 0;        // Lines currently printed below the header
+let streamBuffer = "";          // Accumulated reasoning text
+let streamActive = false;
+let streamLabel = "";
+
+/**
+ * Strip tool-call-like text from reasoning output.
+ * The model often appends `find_and_click(...)` or `done` at the end —
+ * we already show the action on the step line, so remove the noise.
+ */
+function cleanReasoningText(text: string): string {
+  return text
+    // Remove tool call lines: find_and_click(...), find_and_type(...), done, launch_app(...)
+    .replace(/\n?\s*(find_and_click|find_and_type|launch_app|go_back|go_home|done|ask_user)\s*(\([\s\S]*?\))?\s*$/i, "")
+    .trim();
+}
+
+/**
+ * Begin streaming reasoning text below the spinner.
+ */
+export function startStreaming(label: string = "Thinking"): void {
+  if (spinnerTimer) {
+    clearInterval(spinnerTimer);
+    spinnerTimer = null;
+  }
+  spinnerLineActive = false;
+
+  streamActive = true;
+  streamBuffer = "";
+  streamLineCount = 0;
+  streamLabel = label;
+
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0);
+  // Header with colored accent bar
+  process.stdout.write(`  ${theme.brand("┃")} ${theme.step(label)}\n`);
+}
+
+/**
+ * Append a text chunk to the streaming display.
+ */
+export function streamChunk(text: string): void {
+  if (!streamActive) return;
+  streamBuffer += text;
+
+  const allLines = wrapStreamText(streamBuffer, STREAM_LINE_WIDTH);
+  const visible = allLines.slice(-STREAM_MAX_LINES);
+
+  eraseStreamLines();
+
+  for (const line of visible) {
+    process.stdout.write(`  ${theme.brand("┃")} ${theme.muted(line)}\n`);
+  }
+  streamLineCount = visible.length;
+}
+
+/**
+ * End streaming — re-render as a clean, final block.
+ */
+export function stopStreaming(): void {
+  if (!streamActive) return;
+  streamActive = false;
+
+  eraseStreamLines();
+  process.stdout.write("\x1B[1A");
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0);
+
+  const cleaned = cleanReasoningText(streamBuffer);
+  if (cleaned) {
+    const allLines = wrapStreamText(cleaned, STREAM_LINE_WIDTH);
+    process.stdout.write(`  ${theme.dim("┃")} ${theme.dim(streamLabel)}\n`);
+    for (const line of allLines) {
+      process.stdout.write(`  ${theme.dim("┃")} ${theme.muted(line)}\n`);
+    }
+  }
+
+  streamBuffer = "";
+  streamLineCount = 0;
+  process.stdout.write("\x1B[?25h");
+}
+
+function eraseStreamLines(): void {
+  for (let i = 0; i < streamLineCount; i++) {
+    process.stdout.write("\x1B[1A");
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+  }
+}
+
+/**
+ * Print reasoning text as a static block (fallback when streaming wasn't used).
+ */
+export function printReasoning(text: string): void {
+  const cleaned = cleanReasoningText(text);
+  if (!cleaned) return;
+
+  const allLines = wrapStreamText(cleaned, STREAM_LINE_WIDTH);
+  console.log(`  ${theme.dim("┃")} ${theme.dim("Reasoning")}`);
+  for (const line of allLines) {
+    console.log(`  ${theme.dim("┃")} ${theme.muted(line)}`);
+  }
+}
+
+/** Word-wrap text for the streaming display */
+function wrapStreamText(text: string, maxWidth: number): string[] {
+  const lines: string[] = [];
+  const paragraphs = text.split("\n");
+  for (const para of paragraphs) {
+    const words = para.split(" ").filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    for (const word of words) {
+      if (line && line.length + word.length + 1 > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = line ? `${line} ${word}` : word;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  return lines;
 }
 
 // ─── Header (ASCII art box) ──────────────────────────────

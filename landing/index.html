@@ -213,16 +213,16 @@
 
     .hero-right {
       flex: 1;
-      max-width: 480px;
+      max-width: 300px;
       flex-shrink: 0;
     }
 
     .hero-demo-frame {
-      border-radius: 16px;
+      border-radius: 12px;
       overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--bg-secondary);
-      box-shadow: 0 0 80px rgba(59,130,246,0.08), 0 24px 48px rgba(0,0,0,0.4);
+      border: none;
+      background: transparent;
+      box-shadow: 0 0 48px rgba(59,130,246,0.1);
     }
 
     .hero-demo-frame img {
@@ -313,7 +313,40 @@
       line-height: 1.7;
       color: var(--text-secondary);
       max-width: 580px;
-      margin: 0 0 40px;
+      margin: 0 0 20px;
+    }
+
+    .hero-proof {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 580px;
+      margin: 0 0 28px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.16);
+      color: var(--text-secondary);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    .hero-proof strong {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    .hero-proof-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(34,197,94,0.14);
+      color: var(--green);
+      font-size: 12px;
+      margin-top: 1px;
     }
 
     .hero-actions {
@@ -549,22 +582,37 @@
     /* ===== FEATURES ===== */
     .features {
       padding: 120px 0;
+      position: relative;
+    }
+
+    .features .section-header {
+      max-width: 760px;
+      margin: 0 auto 56px;
     }
 
     .features-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      gap: 20px;
     }
 
     .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 32px;
-      transition: all 0.25s;
+      --feature-rgb: 59,130,246;
+      background:
+        linear-gradient(180deg, rgba(var(--feature-rgb), 0.08) 0%, rgba(255,255,255,0.02) 18%, rgba(255,255,255,0.01) 100%),
+        #111115;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 28px 28px 26px;
+      min-height: 228px;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.03),
+        0 18px 40px rgba(0,0,0,0.26);
     }
 
     .feature-card::before {
@@ -572,30 +620,51 @@
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
+      width: 180px;
+      height: 140px;
+      background: radial-gradient(circle at top left, rgba(var(--feature-rgb), 0.2), transparent 68%);
+      opacity: 0.95;
+      pointer-events: none;
+    }
+
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(var(--feature-rgb), 0.45), rgba(255,255,255,0));
+      opacity: 0.7;
+      pointer-events: none;
     }
 
     .feature-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      border-color: rgba(var(--feature-rgb), 0.28);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        0 22px 52px rgba(0,0,0,0.34),
+        0 0 0 1px rgba(var(--feature-rgb), 0.06);
     }
 
-    .feature-card:hover::before { opacity: 1; }
+    .feature-card.fc-blue { --feature-rgb: 59,130,246; }
+    .feature-card.fc-purple { --feature-rgb: 168,85,247; }
+    .feature-card.fc-green { --feature-rgb: 34,197,94; }
+    .feature-card.fc-orange { --feature-rgb: 245,158,11; }
+    .feature-card.fc-cyan { --feature-rgb: 6,182,212; }
+    .feature-card.fc-red { --feature-rgb: 239,68,68; }
 
     .feature-icon {
       width: 44px;
       height: 44px;
-      border-radius: 10px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
+      margin-bottom: 22px;
       font-size: 20px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      position: relative;
+      z-index: 1;
     }
 
     .fi-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.1); }
@@ -606,16 +675,29 @@
     .fi-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.1); }
 
     .feature-card h3 {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 8px;
-      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      position: relative;
+      z-index: 1;
     }
 
     .feature-card p {
       font-size: 14px;
       color: var(--text-secondary);
-      line-height: 1.7;
+      line-height: 1.8;
+      position: relative;
+      z-index: 1;
+    }
+
+    .feature-note {
+      display: block;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      line-height: 1.6;
     }
 
     /* ===== HOW IT WORKS ===== */
@@ -1064,6 +1146,11 @@
       background: rgba(255,255,255,0.05);
     }
 
+    button.install-cmd {
+      font: inherit;
+      margin: 0;
+    }
+
     .install-cmd .dollar { color: var(--text-tertiary); }
     .install-cmd code { color: var(--text-primary); font-weight: 600; }
     .install-cmd .copy-icon { color: var(--text-tertiary); font-size: 14px; }
@@ -1161,9 +1248,10 @@
       .hero-split { flex-direction: column; text-align: center; }
       .hero-left { text-align: center; }
       .hero-left h1 { margin: 0 auto 24px; }
-      .hero-sub { margin: 0 auto 40px; }
+      .hero-sub { margin: 0 auto 20px; }
+      .hero-proof { margin: 0 auto 28px; text-align: left; }
       .hero-actions { justify-content: center; }
-      .hero-right { max-width: 400px; width: 100%; }
+      .hero-right { max-width: 280px; width: 100%; }
       .features-grid { grid-template-columns: repeat(2, 1fr); }
       .how-grid { grid-template-columns: repeat(2, 1fr); }
       .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 40px; }
@@ -1338,15 +1426,14 @@
         <li><a href="#features">Features</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
         <li><a href="#architecture">Architecture</a></li>
-        <li><a href="#quickstart">Get Started</a></li>
+        <li><a href="#quickstart">Quickstart</a></li>
       </ul>
       <div class="nav-right">
-        <a href="#quickstart" class="btn-nav btn-nav-ghost">Quickstart</a>
+        <a href="#quickstart" class="btn-nav btn-nav-primary">Install &amp; quickstart</a>
         <a class="gh-star" href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">
           <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           Star on GitHub
         </a>
-        <a href="#quickstart" class="btn-nav btn-nav-primary">Get Started</a>
         <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav">
           <svg id="hamburger-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <line x1="3" y1="6" x2="21" y2="6"/>
@@ -1369,7 +1456,7 @@
     <a href="#architecture" class="mobile-nav-link">Architecture</a>
     <a href="#quickstart" class="mobile-nav-link">Quickstart</a>
     <a href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener" class="mobile-nav-link">GitHub</a>
-    <a href="#quickstart" class="mobile-nav-cta">Get Started &rarr;</a>
+    <a href="#quickstart" class="mobile-nav-cta">Install &amp; quickstart &rarr;</a>
   </div>
 
   <!-- HERO -->
@@ -1386,7 +1473,7 @@
           <div class="animate-in delay-1">
             <a class="hero-badge" href="https://github.com/AppiumTestDistribution/appclaw/blob/main/LICENSE" target="_blank" rel="noopener" style="text-decoration:none;">
               <span class="hero-badge-dot"></span>
-              Open Source &middot; MIT License
+              Open Source &middot; Apache 2.0
             </a>
           </div>
           <h1 class="animate-in delay-2">
@@ -1394,10 +1481,14 @@
             <span class="gradient">what to do.</span>
           </h1>
           <p class="hero-sub animate-in delay-3">
-            AppClaw is an AI agent that automates any mobile app. Describe a goal in plain English &mdash; it sees the screen, reasons about what to do, and executes actions across Android and iOS.
+            Built for QA, mobile developers, and automation teams who need real device control, not brittle scripts. AppClaw is an on-device AI agent: describe a goal in plain English &mdash; it reads the screen, plans the next action, and runs it on Android and iOS.
           </p>
+          <div class="hero-proof animate-in delay-3" role="note" aria-label="Benchmark result">
+            <span class="hero-proof-icon">%</span>
+            <span><strong>Benchmark:</strong> Vision used about 70% fewer tokens than the DOM-based run, roughly 7k vs 23k.</span>
+          </div>
           <div class="hero-actions animate-in delay-3">
-            <a href="#quickstart" class="btn-hero btn-hero-primary">Get Started &rarr;</a>
+            <a href="#quickstart" class="btn-hero btn-hero-primary">Install &amp; quickstart &rarr;</a>
             <a href="https://github.com/AppiumTestDistribution/appclaw" class="btn-hero btn-hero-secondary" target="_blank" rel="noopener">
               <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
               View on GitHub
@@ -1475,61 +1566,6 @@
             <span style="color:var(--text-secondary); font-size:15px;">🦙</span>
           </div>
           Ollama
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FEATURES -->
-  <section class="features" id="features">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-badge badge-blue">Capabilities</div>
-        <h2>Built for real-world<br>mobile automation</h2>
-        <p>An agentic AI loop that perceives, reasons, and acts on any mobile app — no selectors, no scripting.</p>
-      </div>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon fi-blue">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-hover)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          </div>
-          <h3>Visual Perception</h3>
-          <p>Parses native UI hierarchy (XML) into structured elements. Understands buttons, inputs, toggles, and text — no brittle selectors needed.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon fi-purple">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.57-3.25 3.92"/><path d="M8 6a4 4 0 0 1 8 0"/><path d="M12 22v-6"/><path d="m9 19 3 3 3-3"/><rect x="3" y="10" width="18" height="8" rx="2"/></svg>
-          </div>
-          <h3>Natural Language Goals</h3>
-          <p>Describe what you want in plain English. The AI figures out the sequence of taps, types, scrolls, and swipes to get it done.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon fi-green">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <h3>Self-Healing Recovery</h3>
-          <p>Stuck detection, checkpoint rollback, and alternative path suggestions. Adapts when UI changes or actions fail.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon fi-orange">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          </div>
-          <h3>Cross-Platform</h3>
-          <p>Android via UiAutomator2 and iOS via XCUITest. Same agent, same goals — different platforms handled transparently.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon fi-cyan">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-          </div>
-          <h3>Record &amp; Replay</h3>
-          <p>Record goal executions and replay without LLM costs. Adaptive replayer handles layout changes across runs.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon fi-red">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <h3>Human-in-the-Loop</h3>
-          <p>Pauses for OTP codes, CAPTCHAs, or ambiguous choices. Asks the user and resumes seamlessly.</p>
         </div>
       </div>
     </div>
@@ -1758,9 +1794,9 @@
   <section class="quickstart" id="quickstart">
     <div class="container">
       <div class="section-header">
-        <div class="section-badge badge-green">Get Started</div>
+        <div class="section-badge badge-green">Quickstart</div>
         <h2>Up and running<br>in 60 seconds</h2>
-        <p>Install, configure, connect a device, and run. Four steps to your first AI-automated mobile goal.</p>
+        <p>Install, add your LLM credentials, connect an Android or iOS device, and run. Four steps to your first AI-driven goal on real hardware or simulators.</p>
       </div>
       <div class="qs-layout">
         <div class="qs-steps">
@@ -1775,14 +1811,14 @@
             <div class="qs-step-num">2</div>
             <div class="qs-step-content">
               <h4>Configure your LLM</h4>
-              <p>Create a <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">.env</code> file and set your provider and API key. Works with Anthropic, OpenAI, Google, Groq, or local Ollama.</p>
+              <p>Create a <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">.env</code> file and set your provider and API key. Works with Anthropic, OpenAI, Google, Groq, or local Ollama. AppClaw is free to run; you bring your own key and pay your LLM provider per their pricing (or use a local model).</p>
             </div>
           </div>
           <div class="qs-step">
             <div class="qs-step-num">3</div>
             <div class="qs-step-content">
               <h4>Connect a device</h4>
-              <p>Plug in an Android device (or start an emulator/iOS simulator). Verify with <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">adb devices</code> and start the Appium server.</p>
+              <p>Plug in an Android phone or iPhone, or use an Android emulator / iOS Simulator. Verify Android with <code style="background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px;">adb devices</code>; for iOS, use your usual Xcode / Appium pairing. Then start the Appium server.</p>
             </div>
           </div>
           <div class="qs-step">
@@ -1831,18 +1867,19 @@
     <div class="cta-glow"></div>
     <div class="container">
       <h2>Ready to automate<br>your mobile apps?</h2>
-      <p>Open source. MIT licensed. Free forever. Start automating any Android or iOS app with AI today.</p>
+      <p>Open source under Apache 2.0 &mdash; no license fee for AppClaw. You supply your own LLM API key (provider charges apply) or run a local model. Automate Android and iOS apps with AI today.</p>
       <div class="cta-actions">
-        <a href="https://github.com/AppiumTestDistribution/appclaw" class="btn-hero btn-hero-primary" target="_blank" rel="noopener">
+        <a href="#quickstart" class="btn-hero btn-hero-primary">Install &amp; quickstart</a>
+        <button type="button" class="install-cmd" aria-label="Copy npm install command to clipboard">
+          <span class="dollar">$</span>
+          <code>npm install -g appclaw</code>
+        </button>
+        <a href="https://github.com/AppiumTestDistribution/appclaw" class="btn-hero btn-hero-secondary" target="_blank" rel="noopener">
           <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           Star on GitHub
         </a>
-        <div class="install-cmd">
-          <span class="dollar">$</span>
-          <code>npm install -g appclaw</code>
-        </div>
       </div>
-      <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 16px;">MIT License &middot; Free forever &middot; Community driven</p>
+      <p style="font-size: 13px; color: var(--text-tertiary); margin-top: 16px;">Apache 2.0 &middot; BYO LLM key &middot; Community driven</p>
     </div>
   </section>
 
@@ -1865,7 +1902,7 @@
             <li><a href="#features">Features</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
             <li><a href="#architecture">Architecture</a></li>
-            <li><a href="#quickstart">Get Started</a></li>
+            <li><a href="#quickstart">Quickstart</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -1882,12 +1919,12 @@
           <ul>
             <li><a href="https://github.com/AppiumTestDistribution/appclaw/issues" target="_blank" rel="noopener">Issues</a></li>
             <li><a href="https://github.com/AppiumTestDistribution/appclaw/discussions" target="_blank" rel="noopener">Discussions</a></li>
-            <li><a href="https://github.com/AppiumTestDistribution/appclaw/blob/main/LICENSE" target="_blank" rel="noopener">License (MIT)</a></li>
+            <li><a href="https://github.com/AppiumTestDistribution/appclaw/blob/main/LICENSE" target="_blank" rel="noopener">License (Apache 2.0)</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <p>&copy; 2026 AppClaw. Open source under MIT License.</p>
+        <p>&copy; 2026 AppClaw. Open source under Apache 2.0.</p>
         <div class="footer-socials">
           <a href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">GitHub</a>
           <a href="https://github.com/AppiumTestDistribution/appclaw/discussions" target="_blank" rel="noopener">Discussions</a>

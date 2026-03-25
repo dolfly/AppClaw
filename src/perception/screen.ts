@@ -25,14 +25,20 @@ export async function getScreenState(
   /** Skip page source fetch — for vision mode where DOM is not needed */
   skipPageSource: boolean = false
 ): Promise<ScreenState> {
-  let raw = "";
+  // Kick off page source and screenshot in parallel when both are needed
+  const pageSourcePromise = !skipPageSource ? getPageSource(mcp) : Promise.resolve("");
+  const screenshotPromise = captureScreenshot
+    ? screenshot(mcp).catch(() => undefined)
+    : Promise.resolve(undefined);
+
+  const [raw, screenshotData] = await Promise.all([pageSourcePromise, screenshotPromise]);
+
   let elements: import("./types.js").UIElement[] = [];
   let filtered: import("./types.js").CompactUIElement[] = [];
   let dom = "";
   let platform: "android" | "ios" = "android";
 
-  if (!skipPageSource) {
-    raw = await getPageSource(mcp);
+  if (!skipPageSource && raw) {
     platform = detectPlatform(raw);
 
     elements = platform === "android"
@@ -43,15 +49,5 @@ export async function getScreenState(
     dom = trimDOM(raw, platform, maxElements);
   }
 
-  let screenshotData: string | undefined;
-  if (captureScreenshot) {
-    try {
-      const result = await screenshot(mcp);
-      screenshotData = result ?? undefined;
-    } catch {
-      // Screenshot may fail on secure screens
-    }
-  }
-
-  return { elements, filtered, dom, screenshot: screenshotData, platform, raw };
+  return { elements, filtered, dom, screenshot: screenshotData ?? undefined, platform, raw };
 }
