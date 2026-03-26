@@ -24,11 +24,16 @@
     "@ai-sdk/openai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "ai": "^6.0.72",
+    "boxen": "^8.0.1",
     "chalk": "^5.6.2",
     "cli-spinners": "^3.4.0",
-    "df-vision": "file:../device-farm/packages/stark-vision",
+    "cli-table3": "^0.6.5",
+    "df-vision": "1.1.72",
     "dotenv": "^17.3.1",
     "fast-xml-parser": "^4.5.0",
+    "gradient-string": "^3.0.0",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
     "mjpeg-consumer": "2.0.0",
     "ollama-ai-provider": "^1.0.0",
     "sharp": "^0.33.5",
@@ -37,6 +42,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@types/gradient-string": "^1.1.6",
     "tsx": "^4.21.0",
     "typescript": "^5.6.0"
   }

@@ -23,7 +23,7 @@ import { classifyInstruction } from "../flow/llm-parser.js";
 import { visionExecute } from "../flow/vision-execute.js";
 import type { FlowStep, FlowMeta } from "../flow/types.js";
 import type { MCPClient } from "../mcp/types.js";
-import { theme } from "../ui/terminal.js";
+import { theme, printBox, printPanel, printTable, hr, appGradient, printMarkdown } from "../ui/terminal.js";
 import * as ui from "../ui/terminal.js";
 
 import {
@@ -49,27 +49,76 @@ const state: PlaygroundState = {
 
 // ─── Formatting helpers ─────────────────────────────────
 
-function stepKindLabel(step: FlowStep): string {
+/** Short action word for a step kind */
+function stepAction(step: FlowStep): string {
   switch (step.kind) {
-    case "launchApp":    return `${theme.step("launch")} ${theme.dim("app")}`;
-    case "openApp":      return `${theme.step("open")}   ${theme.white(step.query)}`;
-    case "tap":          return `${theme.step("tap")}    ${theme.white(`"${step.label}"`)}`;
-    case "type":         return `${theme.step("type")}   ${theme.white(`"${step.text}"`)}${step.target ? ` ${theme.dim("in")} ${theme.white(step.target)}` : ""}`;
-    case "swipe":        return `${theme.step("swipe")}  ${theme.white(step.direction)}`;
-    case "wait":         return `${theme.step("wait")}   ${theme.white(`${step.seconds}s`)}`;
-    case "enter":        return theme.step("enter");
-    case "back":         return theme.step("back");
-    case "home":         return theme.step("home");
-    case "assert":       return `${theme.step("assert")} ${theme.white(`"${step.text}"`)}`;
-    case "scrollAssert": return `${theme.step("scrollAssert")} ${theme.white(`"${step.text}"`)} ${theme.dim(`${step.direction} ×${step.maxScrolls}`)}`;
-    case "getInfo":      return `${theme.step("getInfo")} ${theme.white(`"${step.query}"`)}`;
-    case "done":         return `${chalk.green("done")}   ${step.message ? theme.dim(step.message) : ""}`;
+    case "launchApp":    return "launch";
+    case "openApp":      return "open";
+    case "tap":          return "tap";
+    case "type":         return "type";
+    case "swipe":        return "swipe";
+    case "wait":         return "wait";
+    case "enter":        return "enter";
+    case "back":         return "back";
+    case "home":         return "home";
+    case "assert":       return "assert";
+    case "scrollAssert": return "scroll";
+    case "getInfo":      return "info";
+    case "done":         return "done";
+  }
+}
+
+/** Target description for a step */
+function stepTarget(step: FlowStep): string {
+  switch (step.kind) {
+    case "launchApp":    return "app";
+    case "openApp":      return step.query;
+    case "tap":          return `"${step.label}"`;
+    case "type":         return `"${step.text}"${step.target ? ` → ${step.target}` : ""}`;
+    case "swipe":        return step.direction;
+    case "wait":         return `${step.seconds}s`;
+    case "enter":        return "";
+    case "back":         return "";
+    case "home":         return "";
+    case "assert":       return `"${step.text}"`;
+    case "scrollAssert": return `"${step.text}" ${step.direction} ×${step.maxScrolls}`;
+    case "getInfo":      return `"${step.query}"`;
+    case "done":         return step.message ?? "";
   }
 }
 
 function stepToDisplay(step: FlowStep, index: number): string {
-  const num = theme.dim(`${(index + 1).toString().padStart(2)}.`);
-  return `${num} ${stepKindLabel(step)}`;
+  const num = theme.brand(`${(index + 1).toString().padStart(2)}.`);
+  const action = theme.step.bold(stepAction(step).padEnd(7));
+  const target = theme.white(stepTarget(step));
+  return `${num} ${action} ${target}`;
+}
+
+function printStepResult(stepNum: number, step: FlowStep, success: boolean, message: string): void {
+  const num = theme.brand.bold(`${stepNum}`);
+  const action = stepAction(step);
+  const target = stepTarget(step);
+  const icon = success ? theme.success("✓") : theme.error("✗");
+  const msgColor = success ? theme.dim : theme.error;
+
+  // Line 1: step number + action badge + target
+  const actionBadge = success
+    ? chalk.bgHex("#7C6FFF").white.bold(` ${action} `)
+    : chalk.bgRed.white.bold(` ${action} `);
+  console.log(`  ${icon} ${num}  ${actionBadge} ${theme.white(target)}`);
+
+  // Line 2: result detail
+  if (message) {
+    console.log(`       ${msgColor(message)}`);
+  }
+}
+
+function printStepSuccess(stepNum: number, step: FlowStep, message: string): void {
+  printStepResult(stepNum, step, true, message);
+}
+
+function printStepFail(stepNum: number, step: FlowStep, message: string): void {
+  printStepResult(stepNum, step, false, message);
 }
 
 /** Convert step to YAML — preserve the user's original natural language input. */
@@ -116,23 +165,21 @@ function buildYamlString(): string {
 function printStepList(): void {
   if (state.steps.length === 0) return;
 
-  console.log();
-  const metaLine = state.meta.name
-    ? `${theme.brand.bold(state.meta.name)}${state.meta.appId ? theme.dim(` (${state.meta.appId})`) : ""}`
+  const title = state.meta.name
+    ? `${state.meta.name}${state.meta.appId ? ` (${state.meta.appId})` : ""}`
     : state.meta.appId
-      ? theme.dim(state.meta.appId)
-      : "";
-  if (metaLine) {
-    console.log(`  ${theme.dim("┌")} ${metaLine}`);
-  } else {
-    console.log(`  ${theme.dim("┌ Flow")}`);
-  }
-  console.log(`  ${theme.dim("│")}`);
-  for (let i = 0; i < state.steps.length; i++) {
-    console.log(`  ${theme.dim("│")}  ${stepToDisplay(state.steps[i], i)}`);
-  }
-  console.log(`  ${theme.dim("│")}`);
-  console.log(`  ${theme.dim(`└ ${state.steps.length} step${state.steps.length === 1 ? "" : "s"}`)}`);
+      ? state.meta.appId
+      : "Flow";
+
+  const stepLines = state.steps.map((step, i) => stepToDisplay(step, i));
+  const content = [
+    ...stepLines,
+    "",
+    theme.dim(`${state.steps.length} step${state.steps.length === 1 ? "" : "s"}`),
+  ].join("\n");
+
+  console.log();
+  printPanel({ title, content });
   console.log();
 }
 
@@ -171,14 +218,9 @@ const COMMANDS: Record<string, { desc: string; run: (arg: string) => Promise<voi
         console.log(`\n  ${theme.dim("No steps to preview.")}\n`);
         return;
       }
-      console.log();
-      console.log(`  ${theme.brand.bold("YAML Preview")}`);
-      console.log(`  ${theme.dim("─".repeat(40))}`);
       const yamlStr = buildYamlString();
-      for (const line of yamlStr.split("\n")) {
-        console.log(`  ${theme.white(line)}`);
-      }
-      console.log(`  ${theme.dim("─".repeat(40))}`);
+      console.log();
+      printMarkdown("```yaml\n" + yamlStr + "```");
       console.log(`  ${theme.dim("Use")} ${theme.info("/export <file>")} ${theme.dim("to save")}`);
       console.log();
     },
@@ -313,59 +355,63 @@ const COMMANDS: Record<string, { desc: string; run: (arg: string) => Promise<voi
 
 function printHelp(): void {
   console.log();
-  console.log(`  ${theme.brand.bold("Commands")}`);
+  console.log(hr("single", undefined, "Commands"));
   console.log();
-  for (const [cmd, { desc }] of Object.entries(COMMANDS)) {
-    console.log(`  ${theme.info(cmd.padEnd(12))} ${theme.dim(desc)}`);
-  }
-  console.log(`  ${theme.info("/quit".padEnd(12))} ${theme.dim("Exit playground")}`);
+  printTable({
+    headers: ["Command", "Description"],
+    rows: [
+      ...Object.entries(COMMANDS).map(([cmd, { desc }]) => [cmd, desc]),
+      ["/quit", "Exit playground"],
+    ],
+  });
   console.log();
-  console.log(`  ${theme.brand.bold("Step Patterns")} ${theme.dim("— type these directly to execute on device")}`);
+  console.log(hr("single", undefined, "Step Patterns"));
+  console.log(`  ${theme.dim("Type these directly to execute on device")}`);
   console.log();
-  console.log(`  ${theme.step("open / launch")}     ${theme.dim("open YouTube app, launch Settings")}`);
-  console.log(`  ${theme.step("tap / click")}       ${theme.dim("tap on Search, click Login button")}`);
-  console.log(`  ${theme.step("select / choose")}   ${theme.dim("select English, choose Dark mode")}`);
-  console.log(`  ${theme.step("type")}              ${theme.dim('type "hello world", type hello')}`);
-  console.log(`  ${theme.step("search for")}        ${theme.dim("search for appium 3.0, find settings")}`);
-  console.log(`  ${theme.step("enter / submit")}    ${theme.dim("press enter, submit, confirm")}`);
-  console.log(`  ${theme.step("swipe / scroll")}    ${theme.dim("swipe up, scroll down")}`);
-  console.log(`  ${theme.step("wait")}              ${theme.dim("wait 3 s, wait, pause a moment")}`);
-  console.log(`  ${theme.step("back / home")}       ${theme.dim("go back, navigate back, go home")}`);
-  console.log(`  ${theme.step("navigate to")}       ${theme.dim("navigate to Settings screen")}`);
-  console.log(`  ${theme.step("toggle / enable")}   ${theme.dim("toggle WiFi, turn on Bluetooth")}`);
-  console.log(`  ${theme.step("close / dismiss")}   ${theme.dim("close popup, dismiss dialog")}`);
-  console.log(`  ${theme.step("assert / verify")}   ${theme.dim('assert "Connected" is visible')}`);
-  console.log(`  ${theme.step("scroll until")}      ${theme.dim('scroll down until "Settings" is visible')}`);
-  console.log(`  ${theme.step("getInfo")}           ${theme.dim("tell me if the button is yellow, what's in the header?")}`);
-  console.log(`  ${theme.step("done")}              ${theme.dim("done: marks flow end (not executed)")}`);
+  printTable({
+    headers: ["Pattern", "Example"],
+    rows: [
+      ["open / launch", "open YouTube app, launch Settings"],
+      ["tap / click", "tap on Search, click Login button"],
+      ["select / choose", "select English, choose Dark mode"],
+      ["type", 'type "hello world", type hello'],
+      ["search for", "search for appium 3.0, find settings"],
+      ["enter / submit", "press enter, submit, confirm"],
+      ["swipe / scroll", "swipe up, scroll down"],
+      ["wait", "wait 3 s, wait, pause a moment"],
+      ["back / home", "go back, navigate back, go home"],
+      ["navigate to", "navigate to Settings screen"],
+      ["toggle / enable", "toggle WiFi, turn on Bluetooth"],
+      ["close / dismiss", "close popup, dismiss dialog"],
+      ["assert / verify", 'assert "Connected" is visible'],
+      ["scroll until", 'scroll down until "Settings" is visible'],
+      ["getInfo", "what's in the header?"],
+      ["done", "done: marks flow end (not executed)"],
+    ],
+  });
   console.log();
 }
 
 // ─── Header ─────────────────────────────────────────────
 
 function printPlaygroundHeader(): void {
+  const content = [
+    appGradient("Execute commands live & export as YAML"),
+    "",
+    `${theme.dim("Commands run on device immediately.")}`,
+    `${theme.dim("Use")} ${theme.info("/yaml")} ${theme.dim("to preview and")} ${theme.info("/export")} ${theme.dim("to save.")}`,
+    `${theme.dim("Type")} ${theme.info("/help")} ${theme.dim("for all commands.")}`,
+  ].join("\n");
+
   console.log();
-  console.log(`  ${theme.dim("╭──────────────────────────────────────────────────────╮")}`);
-  console.log(`  ${theme.dim("│")}                                                      ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}   ${theme.brand.bold("AppClaw Playground")}                                 ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}   ${theme.muted("Execute commands live & export as YAML")}            ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}                                                      ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}   ${theme.dim("Commands run on device immediately.")}                 ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}   ${theme.dim("Use")} ${theme.info("/yaml")} ${theme.dim("to preview and")} ${theme.info("/export")} ${theme.dim("to save.")}          ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}   ${theme.dim("Type")} ${theme.info("/help")} ${theme.dim("for all commands.")}                       ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("│")}                                                      ${theme.dim("│")}`);
-  console.log(`  ${theme.dim("╰──────────────────────────────────────────────────────╯")}`);
+  printBox(content, { title: "AppClaw Playground", titleAlignment: "left" });
   console.log();
 }
 
 // ─── Prompt ─────────────────────────────────────────────
 
 function getPrompt(): string {
-  const count = state.steps.length;
-  if (count === 0) {
-    return `  ${chalk.hex("#7C6FFF")("▸")} `;
-  }
-  return `  ${theme.dim(`[${count}]`)} ${chalk.hex("#7C6FFF")("▸")} `;
+  return `\n  ${chalk.hex("#7C6FFF").bold("›")} `;
 }
 
 // ─── Device connection ──────────────────────────────────
@@ -402,9 +448,21 @@ async function connectToDevice(): Promise<boolean> {
     ui.stopSpinner();
     ui.printSetupOk("App resolver ready");
 
+    const readyContent = [
+      `${theme.dim("Type commands to execute on device.")}`,
+      "",
+      `${theme.dim("Examples:")}`,
+      `  ${theme.white("open youtube app")}`,
+      `  ${theme.white("click on Search")}`,
+      `  ${theme.white('type "hello"')}`,
+    ].join("\n");
     console.log();
-    console.log(`  ${theme.success.bold("Device connected!")} ${theme.dim("Type commands to execute on device.")}`);
-    console.log(`  ${theme.dim("Examples:")} ${theme.white("open youtube app")}${theme.dim(",")} ${theme.white("click on Search")}${theme.dim(",")} ${theme.white('type "hello"')}`);
+    printBox(readyContent, {
+      title: "Device connected",
+      titleAlignment: "left",
+      borderColor: "#22C55E",
+      padding: { left: 2, right: 2, top: 1, bottom: 1 },
+    });
     console.log();
 
     return true;
@@ -513,10 +571,11 @@ async function handleGetInfo(query: string): Promise<void> {
   }
 
   try {
-    console.log(`  ${theme.dim("Analyzing screen…")}`);
+    ui.startSpinner("Analyzing screen", query);
     const { screenshot } = await import("../mcp/tools.js");
     const imageBase64 = await screenshot(state.mcp);
     if (!imageBase64) {
+      ui.stopSpinner();
       console.log(`  ${theme.error("✗")} Failed to capture screenshot`);
       return;
     }
@@ -524,6 +583,7 @@ async function handleGetInfo(query: string): Promise<void> {
     const { getStarkVisionApiKey, getStarkVisionModel } = await import("../vision/locate-enabled.js");
     const apiKey = getStarkVisionApiKey();
     if (!apiKey) {
+      ui.stopSpinner();
       console.log(`  ${theme.error("✗")} getInfo requires STARK_VISION_API_KEY or GEMINI_API_KEY`);
       return;
     }
@@ -543,16 +603,13 @@ async function handleGetInfo(query: string): Promise<void> {
       answer = response;
     }
 
+    ui.stopSpinner();
     console.log();
-    console.log(`  ${theme.brand.bold("Answer")}`);
-    console.log(`  ${theme.dim("─".repeat(40))}`);
-    console.log(`  ${theme.white(answer)}`);
-    if (explanation) {
-      console.log(`  ${theme.dim(explanation)}`);
-    }
-    console.log(`  ${theme.dim("─".repeat(40))}`);
+    const ansContent = explanation ? `${answer}\n\n${theme.dim(explanation)}` : answer;
+    printPanel({ title: "Answer", content: ansContent });
     console.log();
   } catch (err: any) {
+    ui.stopSpinner();
     console.log(`  ${theme.error("✗")} Failed to get info: ${theme.error(err?.message ?? String(err))}`);
   }
 }
@@ -578,52 +635,46 @@ async function processLine(line: string): Promise<void> {
   // Falls back to two-call path (classifyInstruction → executeStep) for non-visual instructions.
   if (state.mcp && Config.AGENT_MODE === "vision") {
     try {
-      console.log(`  ${theme.dim("Executing…")}`);
+      ui.startSpinner("Executing", line);
       const vResult = await visionExecute(state.mcp, line);
+      ui.stopSpinner();
 
       if (vResult) {
-        // getInfo — display answer, don't record as step
         if (vResult.isGetInfo) {
+          const ans = vResult.getInfoAnswer || vResult.result.message;
+          const ansBody = vResult.getInfoExplanation ? `${ans}\n\n${theme.dim(vResult.getInfoExplanation)}` : ans;
           console.log();
-          console.log(`  ${theme.brand.bold("Answer")}`);
-          console.log(`  ${theme.dim("─".repeat(40))}`);
-          console.log(`  ${theme.white(vResult.getInfoAnswer || vResult.result.message)}`);
-          if (vResult.getInfoExplanation) {
-            console.log(`  ${theme.dim(vResult.getInfoExplanation)}`);
-          }
-          console.log(`  ${theme.dim("─".repeat(40))}`);
+          printPanel({ title: "Answer", content: ansBody });
           console.log();
           return;
         }
 
-        // Vision identified the step but needs executeStep (e.g. openApp needs app resolution)
         if (vResult.result.message === "__needs_executeStep__") {
           const stepNum = state.steps.length + 1;
-          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.dim("…")}`);
+          ui.startSpinner(`[${stepNum}] ${vResult.step.kind}`, "running on device");
           const execResult = await runStepOnDevice(vResult.step);
+          ui.stopSpinner();
           if (execResult.success) {
             state.steps.push(vResult.step);
-            console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.success("✓")} ${theme.dim(execResult.message)}`);
+            printStepSuccess(stepNum, vResult.step, execResult.message);
           } else {
-            console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.error("✗")} ${theme.error(execResult.message)}`);
+            printStepFail(stepNum, vResult.step, execResult.message);
           }
           return;
         }
 
-        // Action step — show result and record
         const stepNum = state.steps.length + 1;
         if (vResult.result.success) {
           state.steps.push(vResult.step);
-          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.success("✓")} ${theme.dim(vResult.result.message)}`);
+          printStepSuccess(stepNum, vResult.step, vResult.result.message);
         } else {
-          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.error("✗")} ${theme.error(vResult.result.message)}`);
+          printStepFail(stepNum, vResult.step, vResult.result.message);
           console.log(`    ${theme.dim("Step not recorded. Fix and try again.")}`);
         }
         return;
       }
-      // visionExecute returned null → instruction needs two-call path (open app, wait, done, etc.)
     } catch (err: any) {
-      // Vision failed — fall through to two-call path
+      ui.stopSpinner();
       console.log(`  ${theme.dim("Vision shortcut failed, falling back…")}`);
     }
   }
@@ -631,15 +682,16 @@ async function processLine(line: string): Promise<void> {
   // ── Two-call fallback: classify via LLM → execute via step runner ──
   let parsed: FlowStep;
   try {
-    console.log(`  ${theme.dim("Classifying…")}`);
+    ui.startSpinner("Classifying", line);
     parsed = await classifyInstruction(line);
+    ui.stopSpinner();
   } catch (err: any) {
+    ui.stopSpinner();
     console.log(`  ${theme.error("✗")} Could not classify: ${theme.dim(err?.message ?? String(err))}`);
     console.log(`    ${theme.dim("Type")} ${theme.info("/help")} ${theme.dim("to see supported patterns")}`);
     return;
   }
 
-  // getInfo — answer a question about the screen (not recorded as a step)
   if (parsed.kind === "getInfo") {
     await handleGetInfo(parsed.query);
     return;
@@ -647,28 +699,29 @@ async function processLine(line: string): Promise<void> {
 
   const stepNum = state.steps.length + 1;
 
-  // "done" steps are just recorded, not executed
   if (parsed.kind === "done") {
     state.steps.push(parsed);
-    console.log(`  ${theme.dim(`[${stepNum}]`)} ${chalk.green("done")} ${parsed.message ? theme.dim(parsed.message) : ""} ${theme.success("✓ recorded")}`);
+    printStepSuccess(stepNum, parsed, "recorded");
     return;
   }
 
   // Execute on device
-  console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(parsed)} ${theme.dim("…")}`);
+  ui.startSpinner(`[${stepNum}] ${parsed.kind}`, "running on device");
 
   try {
     const result = await runStepOnDevice(parsed);
+    ui.stopSpinner();
 
     if (result.success) {
       state.steps.push(parsed);
-      console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(parsed)} ${theme.success("✓")} ${theme.dim(result.message)}`);
+      printStepSuccess(stepNum, parsed, result.message);
     } else {
-      console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(parsed)} ${theme.error("✗")} ${theme.error(result.message)}`);
+      printStepFail(stepNum, parsed, result.message);
       console.log(`    ${theme.dim("Step not recorded. Fix and try again.")}`);
     }
   } catch (err: any) {
-    console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(parsed)} ${theme.error("✗")} ${theme.error(err?.message ?? String(err))}`);
+    ui.stopSpinner();
+    printStepFail(stepNum, parsed, err?.message ?? String(err));
     console.log(`    ${theme.dim("Step not recorded. Fix and try again.")}`);
   }
 }

@@ -134,6 +134,7 @@ function parseArgs(): CLIArgs {
 }
 
 async function main() {
+  await ui.initUI();
   const config = loadConfig();
   const cliArgs = parseArgs();
 
