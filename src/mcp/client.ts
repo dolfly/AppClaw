@@ -81,8 +81,13 @@ export async function createMCPClient(config: MCPConfig): Promise<MCPClient> {
 
   return {
     async callTool(name: string, args: Record<string, unknown>): Promise<MCPToolResult> {
+      const t0 = mcpDebug ? performance.now() : 0;
       const result = await client.callTool({ name, arguments: args });
       const typed = result as MCPToolResult;
+      if (mcpDebug) {
+        const elapsed = Math.round(performance.now() - t0);
+        console.log(`        ${theme.dim("mcp")} ${theme.info(name)} ${theme.dim(`${elapsed}ms`)}`);
+      }
       logMCP(name, args, typed);
       return typed;
     },

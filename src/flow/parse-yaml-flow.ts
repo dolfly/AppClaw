@@ -75,6 +75,9 @@ function normalizeStep(raw: unknown, index: number): FlowStep {
     if (k === "assert" || k === "verify" || k === "check") {
       return { kind: "assert", text: String(v) };
     }
+    if (k === "getInfo") {
+      return { kind: "getInfo", query: String(v) };
+    }
     if (k === "done") {
       return { kind: "done", message: v == null || v === "" ? undefined : String(v) };
     }

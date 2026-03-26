@@ -676,6 +676,26 @@ export function printTokenSummary(
   );
 }
 
+export function printJourneyTokenSummary(
+  totalInput: number,
+  totalOutput: number,
+  totalCost: number,
+  totalSteps: number,
+  modelName: string
+): void {
+  const total = totalInput + totalOutput;
+  if (total === 0) return;
+  console.log(`  ${theme.dim("──────────────────────────────────────────────────")}`);
+  console.log(
+    `  ${theme.label("Journey")} ${theme.white(total.toLocaleString() + " tokens")}` +
+    ` ${theme.dim(`(in: ${totalInput.toLocaleString()} out: ${totalOutput.toLocaleString()})`)}` +
+    ` ${theme.dim("·")} ${theme.success(`$${totalCost.toFixed(4)}`)}` +
+    ` ${theme.dim("·")} ${theme.white(`${totalSteps} steps`)}` +
+    ` ${theme.dim("·")} ${theme.dim(modelName)}`
+  );
+  console.log();
+}
+
 // ─── Explorer Agent ──────────────────────────────────────
 
 export function printExplorerHeader(): void {

@@ -31,6 +31,7 @@ export const MODEL_PRICING: Record<string, [number, number]> = {
   "gemini-1.5-pro": [1.25, 5.00],
   "gemini-2.5-pro-preview-05-06": [1.25, 10.00],
   "gemini-3.1-flash-lite-preview": [0.075, 0.30],
+  "gemini-3-flash-preview": [0.10, 0.40],
   // OpenAI
   "gpt-4o": [2.50, 10.00],
   "gpt-4o-mini": [0.15, 0.60],

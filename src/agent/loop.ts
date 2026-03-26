@@ -30,6 +30,8 @@ import { activateAppWithFallback } from "../mcp/activate-app.js";
 import { MODEL_PRICING } from "../constants.js";
 import * as ui from "../ui/terminal.js";
 
+const mcpDebug = process.env.MCP_DEBUG === "1" || process.env.MCP_DEBUG === "true";
+
 export interface AgentOptions {
   goal: string;
   /** Clean goal text for CLI display (without CONTEXT block). If omitted, uses goal. */
@@ -306,6 +308,7 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
 
     let decision: ToolCallDecision;
     let streamingStarted = false;
+    const llmT0 = performance.now();
     try {
       decision = await llm.getDecision(context, {
         onTextStart() {
@@ -351,7 +354,11 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
     }
 
     // ─── 4b. LOG THE DECISION + TOKENS ──────────────────
+    const llmElapsed = Math.round(performance.now() - llmT0);
     ui.stopSpinner();
+    if (mcpDebug) {
+      console.log(`        ${ui.theme.dim("llm")} ${ui.theme.info("getDecision")} ${ui.theme.dim(`${llmElapsed}ms`)}`);
+    }
 
     // If reasoning text is available but wasn't streamed live, show it now
     if (decision.reasoning && !streamingStarted) {

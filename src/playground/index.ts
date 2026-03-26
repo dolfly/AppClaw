@@ -13,19 +13,18 @@ import path from "node:path";
 import chalk from "chalk";
 import { stringify } from "yaml";
 
-import { loadConfig } from "../config.js";
+import { loadConfig, Config } from "../config.js";
 import { createMCPClient } from "../mcp/client.js";
-import { extractText, getPageSource } from "../mcp/tools.js";
+import { extractText } from "../mcp/tools.js";
 import { androidCreateSessionArgs } from "../mcp/session-caps.js";
 import { AppResolver } from "../agent/app-resolver.js";
 import { tryParseNaturalFlowLine } from "../flow/natural-line.js";
+import { classifyInstruction } from "../flow/llm-parser.js";
+import { visionExecute } from "../flow/vision-execute.js";
 import type { FlowStep, FlowMeta } from "../flow/types.js";
 import type { MCPClient } from "../mcp/types.js";
 import { theme } from "../ui/terminal.js";
 import * as ui from "../ui/terminal.js";
-import { detectPlatform } from "../perception/screen.js";
-import { parseAndroidPageSource } from "../perception/android-parser.js";
-import { parseIOSPageSource } from "../perception/ios-parser.js";
 
 import {
   executeStep,
@@ -63,6 +62,7 @@ function stepKindLabel(step: FlowStep): string {
     case "home":         return theme.step("home");
     case "assert":       return `${theme.step("assert")} ${theme.white(`"${step.text}"`)}`;
     case "scrollAssert": return `${theme.step("scrollAssert")} ${theme.white(`"${step.text}"`)} ${theme.dim(`${step.direction} ×${step.maxScrolls}`)}`;
+    case "getInfo":      return `${theme.step("getInfo")} ${theme.white(`"${step.query}"`)}`;
     case "done":         return `${chalk.green("done")}   ${step.message ? theme.dim(step.message) : ""}`;
   }
 }
@@ -91,6 +91,7 @@ function stepToYaml(step: FlowStep): unknown {
     case "home":         return "go home";
     case "assert":       return `assert "${step.text}" is visible`;
     case "scrollAssert": return `scroll ${step.direction} until "${step.text}" is visible`;
+    case "getInfo":      return `getInfo: ${step.query}`;
     case "done":         return step.message ? `done: ${step.message}` : "done";
   }
 }
@@ -335,6 +336,7 @@ function printHelp(): void {
   console.log(`  ${theme.step("close / dismiss")}   ${theme.dim("close popup, dismiss dialog")}`);
   console.log(`  ${theme.step("assert / verify")}   ${theme.dim('assert "Connected" is visible')}`);
   console.log(`  ${theme.step("scroll until")}      ${theme.dim('scroll down until "Settings" is visible')}`);
+  console.log(`  ${theme.step("getInfo")}           ${theme.dim("tell me if the button is yellow, what's in the header?")}`);
   console.log(`  ${theme.step("done")}              ${theme.dim("done: marks flow end (not executed)")}`);
   console.log();
 }
@@ -502,48 +504,56 @@ async function cleanup(): Promise<void> {
   }
 }
 
-// ─── Screen queries ──────────────────────────────────
+// ─── Screen queries (via vision getInfo) ─────────────
 
-const SCREEN_QUERY_RE = /^(?:tell\s+me|what(?:'s|\s+is|\s+are)|how\s+many|show\s+me|describe|list|what\s+do\s+i\s+see|what\s+can\s+i\s+see|what\s+(?:texts?|elements?|options?|items?|buttons?)\s+(?:are|is))/i;
-
-function isScreenQuery(line: string): boolean {
-  return SCREEN_QUERY_RE.test(line.trim());
-}
-
-async function handleScreenQuery(query: string): Promise<void> {
+async function handleGetInfo(query: string): Promise<void> {
   if (!state.mcp) {
     console.log(`  ${theme.error("✗")} Not connected to device`);
     return;
   }
 
   try {
-    console.log(`  ${theme.dim("Reading screen…")}`);
-    const pageSource = await getPageSource(state.mcp);
-    const platform = detectPlatform(pageSource);
-    const elements = platform === "android"
-      ? parseAndroidPageSource(pageSource)
-      : parseIOSPageSource(pageSource);
-
-    const visibleTexts = elements
-      .map(el => el.text)
-      .filter(t => t.length > 0);
-    const uniqueTexts = [...new Set(visibleTexts)];
-
-    if (uniqueTexts.length === 0) {
-      console.log(`  ${theme.dim("No text elements visible on screen.")}`);
+    console.log(`  ${theme.dim("Analyzing screen…")}`);
+    const { screenshot } = await import("../mcp/tools.js");
+    const imageBase64 = await screenshot(state.mcp);
+    if (!imageBase64) {
+      console.log(`  ${theme.error("✗")} Failed to capture screenshot`);
       return;
     }
 
+    const { getStarkVisionApiKey, getStarkVisionModel } = await import("../vision/locate-enabled.js");
+    const apiKey = getStarkVisionApiKey();
+    if (!apiKey) {
+      console.log(`  ${theme.error("✗")} getInfo requires STARK_VISION_API_KEY or GEMINI_API_KEY`);
+      return;
+    }
+
+    const { default: starkVision } = await import("df-vision");
+    const { StarkVisionClient } = starkVision;
+    const client = new StarkVisionClient({ apiKey, model: getStarkVisionModel(), disableThinking: true });
+    const response = await client.getElementInfo(imageBase64, query, true);
+
+    let answer: string;
+    let explanation: string | undefined;
+    try {
+      const parsed = JSON.parse(response.replace(/(^```json\s*|```\s*$)/g, "").trim());
+      answer = parsed.answer || response;
+      explanation = parsed.explanation;
+    } catch {
+      answer = response;
+    }
+
     console.log();
-    console.log(`  ${theme.brand.bold("Screen")} ${theme.dim(`(${uniqueTexts.length} visible texts)`)}`);
+    console.log(`  ${theme.brand.bold("Answer")}`);
     console.log(`  ${theme.dim("─".repeat(40))}`);
-    for (let i = 0; i < uniqueTexts.length; i++) {
-      console.log(`  ${theme.dim(`${(i + 1).toString().padStart(3)}.`)} ${theme.white(uniqueTexts[i])}`);
+    console.log(`  ${theme.white(answer)}`);
+    if (explanation) {
+      console.log(`  ${theme.dim(explanation)}`);
     }
     console.log(`  ${theme.dim("─".repeat(40))}`);
     console.log();
   } catch (err: any) {
-    console.log(`  ${theme.error("✗")} Failed to read screen: ${theme.error(err?.message ?? String(err))}`);
+    console.log(`  ${theme.error("✗")} Failed to get info: ${theme.error(err?.message ?? String(err))}`);
   }
 }
 
@@ -563,17 +573,75 @@ async function processLine(line: string): Promise<void> {
     return;
   }
 
-  // Screen query — user is asking a question about the screen (not a step)
-  if (isScreenQuery(line)) {
-    await handleScreenQuery(line);
+  // ── Hybrid single-call path (vision mode) ──
+  // In vision mode: screenshot + instruction → one LLM call → classify + locate → execute.
+  // Falls back to two-call path (classifyInstruction → executeStep) for non-visual instructions.
+  if (state.mcp && Config.AGENT_MODE === "vision") {
+    try {
+      console.log(`  ${theme.dim("Executing…")}`);
+      const vResult = await visionExecute(state.mcp, line);
+
+      if (vResult) {
+        // getInfo — display answer, don't record as step
+        if (vResult.isGetInfo) {
+          console.log();
+          console.log(`  ${theme.brand.bold("Answer")}`);
+          console.log(`  ${theme.dim("─".repeat(40))}`);
+          console.log(`  ${theme.white(vResult.getInfoAnswer || vResult.result.message)}`);
+          if (vResult.getInfoExplanation) {
+            console.log(`  ${theme.dim(vResult.getInfoExplanation)}`);
+          }
+          console.log(`  ${theme.dim("─".repeat(40))}`);
+          console.log();
+          return;
+        }
+
+        // Vision identified the step but needs executeStep (e.g. openApp needs app resolution)
+        if (vResult.result.message === "__needs_executeStep__") {
+          const stepNum = state.steps.length + 1;
+          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.dim("…")}`);
+          const execResult = await runStepOnDevice(vResult.step);
+          if (execResult.success) {
+            state.steps.push(vResult.step);
+            console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.success("✓")} ${theme.dim(execResult.message)}`);
+          } else {
+            console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.error("✗")} ${theme.error(execResult.message)}`);
+          }
+          return;
+        }
+
+        // Action step — show result and record
+        const stepNum = state.steps.length + 1;
+        if (vResult.result.success) {
+          state.steps.push(vResult.step);
+          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.success("✓")} ${theme.dim(vResult.result.message)}`);
+        } else {
+          console.log(`  ${theme.dim(`[${stepNum}]`)} ${stepKindLabel(vResult.step)} ${theme.error("✗")} ${theme.error(vResult.result.message)}`);
+          console.log(`    ${theme.dim("Step not recorded. Fix and try again.")}`);
+        }
+        return;
+      }
+      // visionExecute returned null → instruction needs two-call path (open app, wait, done, etc.)
+    } catch (err: any) {
+      // Vision failed — fall through to two-call path
+      console.log(`  ${theme.dim("Vision shortcut failed, falling back…")}`);
+    }
+  }
+
+  // ── Two-call fallback: classify via LLM → execute via step runner ──
+  let parsed: FlowStep;
+  try {
+    console.log(`  ${theme.dim("Classifying…")}`);
+    parsed = await classifyInstruction(line);
+  } catch (err: any) {
+    console.log(`  ${theme.error("✗")} Could not classify: ${theme.dim(err?.message ?? String(err))}`);
+    console.log(`    ${theme.dim("Type")} ${theme.info("/help")} ${theme.dim("to see supported patterns")}`);
     return;
   }
 
-  // Parse as natural language step
-  const parsed = tryParseNaturalFlowLine(line);
-  if (!parsed) {
-    console.log(`  ${theme.error("✗")} Could not parse: ${theme.dim(line)}`);
-    console.log(`    ${theme.dim("Type")} ${theme.info("/help")} ${theme.dim("to see supported patterns")}`);
+  // getInfo — answer a question about the screen (not recorded as a step)
+  if (parsed.kind === "getInfo") {
+    await handleGetInfo(parsed.query);
     return;
   }
 

@@ -38,7 +38,7 @@ AppClaw:
 
 1. **Node.js** 18+
 2. **Device connected** — USB, emulator, or simulator
-3. **Gemini API key** from [Google AI Studio](https://aistudio.google.com/)
+3. **LLM API key** from any supported provider (Anthropic, OpenAI, Google, Groq, or local Ollama)
 
 ## Installation
 

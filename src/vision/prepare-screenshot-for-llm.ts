@@ -11,7 +11,7 @@ function isSupportedBase64ImagePrefix(data: string): boolean {
 
 /**
  * If maxEdgePx > 0, resize so width and height are ≤ maxEdgePx (aspect preserved, no upscale).
- * Returns PNG base64 (no data: prefix). On failure or when disabled, returns input unchanged.
+ * Returns JPEG base64 (no data: prefix). On failure or when disabled, returns input unchanged.
  */
 export async function prepareScreenshotForLlm(
   rawBase64: string | undefined,
@@ -30,7 +30,7 @@ export async function prepareScreenshotForLlm(
         fit: "inside",
         withoutEnlargement: true,
       })
-      .png({ compressionLevel: 9 })
+      .jpeg({ quality: 80 })
       .toBuffer();
     return resized.toString("base64");
   } catch {

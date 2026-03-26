@@ -90,6 +90,8 @@ function stepLabel(step: FlowStep): string {
       return `assert "${step.text}"`;
     case "scrollAssert":
       return `scroll ${step.direction} until "${step.text}"`;
+    case "getInfo":
+      return `getInfo "${step.query.length > 50 ? `${step.query.slice(0, 47)}…` : step.query}"`;
     case "done":
       return step.message ? `done (${step.message})` : "done";
   }
@@ -463,11 +465,14 @@ async function visionAssert(mcp: MCPClient, text: string): Promise<boolean> {
   const client = new StarkVisionClient({
     apiKey,
     model: getStarkVisionModel(),
+    disableThinking: true,
   });
 
   if (mcpDebug) ui.printAgentBullet(`[vision-assert] Asking LLM: is "${text}" visible? (model: ${getStarkVisionModel()})`);
+  const visT0 = performance.now();
   const response = await client.isElementVisible(imageBase64, text, true);
-  if (mcpDebug) ui.printAgentBullet(`[vision-assert] LLM response: ${response}`);
+  const visElapsed = Math.round(performance.now() - visT0);
+  if (mcpDebug) ui.printAgentBullet(`[vision-assert] LLM response (${visElapsed}ms): ${response}`);
 
   // Parse structured JSON response first (e.g. { conditionSatisfied: true/false })
   let result = false;
@@ -684,6 +689,26 @@ export async function executeStep(
       return assertTextVisible(mcp, step.text, tapPoll);
     case "scrollAssert":
       return scrollUntilVisible(mcp, step.text, step.direction, step.maxScrolls, tapPoll);
+    case "getInfo": {
+      const infoApiKey = getStarkVisionApiKey();
+      if (!infoApiKey) {
+        return { success: false, message: "getInfo requires STARK_VISION_API_KEY or GEMINI_API_KEY" };
+      }
+      const infoImage = await screenshot(mcp);
+      if (!infoImage) {
+        return { success: false, message: "Failed to capture screenshot for getInfo" };
+      }
+      const { StarkVisionClient: InfoClient } = (await import("df-vision")).default;
+      const infoClient = new InfoClient({ apiKey: infoApiKey, model: getStarkVisionModel(), disableThinking: true });
+      const infoResponse = await infoClient.getElementInfo(infoImage, step.query, true);
+      try {
+        const infoParsed = JSON.parse(infoResponse.replace(/(^```json\s*|```\s*$)/g, "").trim());
+        const answer = infoParsed.answer || infoResponse;
+        return { success: true, message: answer };
+      } catch {
+        return { success: true, message: infoResponse };
+      }
+    }
     case "done": {
       // When done has a message, treat it as an assertion — verify the claim
       // is true on screen before declaring success. A bare `done` (no message)

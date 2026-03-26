@@ -94,9 +94,15 @@ export async function starkLocateTapTarget(
   const client = new StarkVisionClient({
     apiKey,
     model: getStarkVisionModel(),
+    disableThinking: true,
   });
 
+  const locateT0 = performance.now();
   const actions = await parseInstruction(client, trimmed, imageBase64);
+  if (process.env.MCP_DEBUG === "1" || process.env.MCP_DEBUG === "true") {
+    const elapsed = Math.round(performance.now() - locateT0);
+    console.log(`        [stark] parseInstruction ${elapsed}ms`);
+  }
 
   for (const action of actions) {
     for (const locator of action.locators ?? []) {
@@ -117,7 +123,11 @@ export async function starkLocateTapTarget(
       }
 
       if (locator.element) {
+        const bboxT0 = performance.now();
         const bboxResponse = await client.getBoundingBox(locator.element, imageBase64);
+        if (process.env.MCP_DEBUG === "1" || process.env.MCP_DEBUG === "true") {
+          console.log(`        [stark] getBoundingBox ${Math.round(performance.now() - bboxT0)}ms`);
+        }
         const arrayStr = findSubstringWithBrackets(bboxResponse);
         if (arrayStr) {
           const bboxCoords = sanitizeOutput(arrayStr) as [number, number];

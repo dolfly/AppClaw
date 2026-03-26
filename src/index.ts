@@ -393,6 +393,9 @@ async function main() {
     // Execute each sub-goal sequentially
     let subGoalIdx = 0;
     let totalSteps = 0;
+    let journeyInputTokens = 0;
+    let journeyOutputTokens = 0;
+    let journeyCost = 0;
     const allHistory: any[] = [];
 
     while (!executor.isDone()) {
@@ -433,40 +436,26 @@ async function main() {
             config.LLM_SCREENSHOT_MAX_EDGE_PX
           );
 
-          // ─── Step 1: Screen readiness check ──────────────
-          // Verify the screen is clean before evaluating the next sub-goal.
-          // Detects leftover overlays, unconfirmed input, etc. from previous sub-goal.
+          // ─── Parallel: Screen readiness + Sub-goal evaluation ──
+          // Run both checks in parallel — they're independent.
+          // If readiness rewrites the goal, we skip the evaluation result.
           const prevGoal = executor.all[subGoalIdx - 1];
-          if (prevGoal) {
-            const readiness = await assessScreenReadiness(
-              plannerModel,
-              prevGoal.goal,
-              subGoal.goal,
-              orchestratorDom,
-              thinkingOptions,
-              orchestratorScreenshot,
-            );
+          const completedGoalsList = executor.all
+            .filter(sg => sg.status === "completed")
+            .map(sg => `${sg.goal} → ${sg.result}`);
 
-            if (!readiness.ready) {
-              ui.stopSpinner();
-              ui.printScreenReadiness(readiness.issues, readiness.suggestedAction);
-              // If there's a suggested cleanup action, incorporate it into the goal
-              if (readiness.suggestedAction) {
-                effectiveGoal = `${readiness.suggestedAction}, then ${subGoal.goal}`;
-                ui.printOrchestratorRewrite(subGoal.goal, effectiveGoal);
-              }
-              ui.startSpinner("Reconciling plan with device…", "orchestrator");
-            }
-          }
-
-          // ─── Step 2: Sub-goal evaluation ─────────────────
-          // Only if readiness didn't already rewrite the goal
-          if (effectiveGoal === subGoal.goal) {
-            const completedGoalsList = executor.all
-              .filter(sg => sg.status === "completed")
-              .map(sg => `${sg.goal} → ${sg.result}`);
-
-            const decision = await evaluateSubGoal(
+          const [readiness, decision] = await Promise.all([
+            prevGoal
+              ? assessScreenReadiness(
+                  plannerModel,
+                  prevGoal.goal,
+                  subGoal.goal,
+                  orchestratorDom,
+                  thinkingOptions,
+                  orchestratorScreenshot,
+                )
+              : Promise.resolve({ ready: true, issues: [] as string[] } as { ready: boolean; issues: string[]; suggestedAction?: string }),
+            evaluateSubGoal(
               plannerModel,
               goal,
               subGoal.goal,
@@ -474,8 +463,22 @@ async function main() {
               orchestratorDom,
               thinkingOptions,
               orchestratorScreenshot,
-            );
+            ),
+          ]);
 
+          // Apply readiness result
+          if (readiness && !readiness.ready) {
+            ui.stopSpinner();
+            ui.printScreenReadiness(readiness.issues, readiness.suggestedAction);
+            if (readiness.suggestedAction) {
+              effectiveGoal = `${readiness.suggestedAction}, then ${subGoal.goal}`;
+              ui.printOrchestratorRewrite(subGoal.goal, effectiveGoal);
+            }
+            ui.startSpinner("Reconciling plan with device…", "orchestrator");
+          }
+
+          // Apply evaluation result (only if readiness didn't already rewrite)
+          if (effectiveGoal === subGoal.goal) {
             if (decision.action === "skip") {
               ui.stopSpinner();
               ui.printOrchestratorSkip(subGoal.goal, decision.reason);
@@ -556,6 +559,11 @@ async function main() {
 
       totalSteps += result.stepsUsed;
       allHistory.push(...result.history);
+      if (result.totalTokens) {
+        journeyInputTokens += result.totalTokens.input;
+        journeyOutputTokens += result.totalTokens.output;
+        journeyCost += result.totalTokens.cost;
+      }
 
       if (result.success) {
         executor.markCompleted(result.reason);
@@ -574,6 +582,9 @@ async function main() {
     if (planResult.isComplex) {
       ui.printPlanSummary(executor.all);
     }
+
+    // Print journey-level token totals
+    ui.printJourneyTokenSummary(journeyInputTokens, journeyOutputTokens, journeyCost, totalSteps, modelName);
 
     const allDone = executor.all.every((sg) => sg.status === "completed");
     logger.finalize(goal, {

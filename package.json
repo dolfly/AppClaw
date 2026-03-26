@@ -26,7 +26,7 @@
     "ai": "^6.0.72",
     "chalk": "^5.6.2",
     "cli-spinners": "^3.4.0",
-    "df-vision": "1.1.71",
+    "df-vision": "file:../device-farm/packages/stark-vision",
     "dotenv": "^17.3.1",
     "fast-xml-parser": "^4.5.0",
     "mjpeg-consumer": "2.0.0",
