@@ -11,8 +11,8 @@ export interface InstalledApp {
   label: string;
 }
 
-/** Well-known package names for common apps */
-const WELL_KNOWN_APPS: Record<string, string> = {
+/** Well-known package names for common Android apps */
+const WELL_KNOWN_ANDROID_APPS: Record<string, string> = {
   settings: "com.android.settings",
   chrome: "com.android.chrome",
   whatsapp: "com.whatsapp",
@@ -56,6 +56,54 @@ const WELL_KNOWN_APPS: Record<string, string> = {
   airbnb: "com.airbnb.android",
 };
 
+/** Well-known bundle IDs for common iOS apps */
+const WELL_KNOWN_IOS_APPS: Record<string, string> = {
+  settings: "com.apple.Preferences",
+  safari: "com.apple.mobilesafari",
+  chrome: "com.google.chrome.ios",
+  whatsapp: "net.whatsapp.WhatsApp",
+  instagram: "com.burbn.instagram",
+  facebook: "com.facebook.Facebook",
+  messenger: "com.facebook.Messenger",
+  twitter: "com.atebits.Tweetie2",
+  x: "com.atebits.Tweetie2",
+  youtube: "com.google.ios.youtube",
+  gmail: "com.google.Gmail",
+  maps: "com.apple.Maps",
+  "google maps": "com.google.Maps",
+  "apple maps": "com.apple.Maps",
+  calendar: "com.apple.mobilecal",
+  camera: "com.apple.camera",
+  phone: "com.apple.mobilephone",
+  contacts: "com.apple.MobileAddressBook",
+  messages: "com.apple.MobileSMS",
+  calculator: "com.apple.calculator",
+  clock: "com.apple.mobiletimer",
+  files: "com.apple.DocumentsApp",
+  photos: "com.apple.mobileslideshow",
+  music: "com.apple.Music",
+  spotify: "com.spotify.client",
+  telegram: "ph.telegra.Telegraph",
+  slack: "com.tinyspeck.chatlyio",
+  netflix: "com.netflix.Netflix",
+  uber: "com.ubercab.UberClient",
+  snapchat: "com.toyopagroup.picaboo",
+  linkedin: "com.linkedin.LinkedIn",
+  notes: "com.apple.mobilenotes",
+  reminders: "com.apple.reminders",
+  weather: "com.apple.weather",
+  mail: "com.apple.mobilemail",
+  "app store": "com.apple.AppStore",
+  podcasts: "com.apple.podcasts",
+  news: "com.apple.news",
+  health: "com.apple.Health",
+  wallet: "com.apple.Passbook",
+  "find my": "com.apple.findmy",
+  shortcuts: "com.apple.shortcuts",
+  airbnb: "com.airbnb.app",
+  amazon: "com.amazon.Amazon",
+};
+
 export class AppResolver {
   private apps: InstalledApp[] = [];
   /** Well-known app names — always checked first, highest priority */
@@ -65,11 +113,15 @@ export class AppResolver {
   /** All package name segments for fuzzy searching */
   private packageSegments: Array<{ segment: string; packageName: string }> = [];
   private initialized = false;
+  private platform: "android" | "ios" = "android";
 
   /** Fetch installed apps from device and build lookup */
-  async initialize(mcp: MCPClient): Promise<void> {
+  async initialize(mcp: MCPClient, platform?: "android" | "ios"): Promise<void> {
+    if (platform) this.platform = platform;
+
     // Populate well-known apps first (always available, even if device fetch fails)
-    for (const [name, pkg] of Object.entries(WELL_KNOWN_APPS)) {
+    const wellKnownApps = this.platform === "ios" ? WELL_KNOWN_IOS_APPS : WELL_KNOWN_ANDROID_APPS;
+    for (const [name, pkg] of Object.entries(wellKnownApps)) {
       this.wellKnown.set(name.toLowerCase(), pkg);
     }
 

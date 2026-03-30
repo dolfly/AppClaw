@@ -136,6 +136,13 @@ export function buildSystemPrompt(
 with a visual description as the selector. This uses AI vision to find the element on screen.
 Example: find_and_click(strategy="ai_instruction", selector="blue Send button at bottom right")` : "";
 
+  // iOS-specific navigation hints
+  const iosNavigationHints = platform === "ios" ? `
+- iOS has NO hardware back button. To go back: tap the "< Back" / "Back" button in the navigation bar, or swipe from the left edge.
+- go_back sends a swipe-from-left-edge gesture on iOS.
+- Dismiss keyboards by tapping outside the input field or tapping "Done"/"Return".
+- Home screen: swipe up from the bottom edge.` : "";
+
   return `${BASE_AGENT_PROMPT}
 ${interactionSection}
 ${SHARED_RULES}
@@ -144,7 +151,7 @@ ${SHARED_RULES}
 PLATFORM: ${platformName}
 ═══════════════════════════════════════════
 
-Use ${appIdLabel} for launch_app.
+Use ${appIdLabel} for launch_app.${iosNavigationHints}
 
 ═══════════════════════════════════════════
 AVAILABLE TOOLS

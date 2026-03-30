@@ -16,7 +16,7 @@ import { stringify } from "yaml";
 import { loadConfig, Config } from "../config.js";
 import { createMCPClient } from "../mcp/client.js";
 import { extractText } from "../mcp/tools.js";
-import { androidCreateSessionArgs } from "../mcp/session-caps.js";
+import { setupDevice } from "../device/index.js";
 import { AppResolver } from "../agent/app-resolver.js";
 import { tryParseNaturalFlowLine } from "../flow/natural-line.js";
 import { classifyInstruction } from "../flow/llm-parser.js";
@@ -270,7 +270,10 @@ const COMMANDS: Record<string, { desc: string; run: (arg: string) => Promise<voi
       }
       const yamlStr = buildYamlString();
       console.log();
-      printMarkdown("```yaml\n" + yamlStr + "```");
+      // Print YAML with cyan coloring (not markdown — marked-terminal renders YAML as red)
+      for (const line of yamlStr.split("\n")) {
+        console.log(`    ${chalk.cyan(line)}`);
+      }
       console.log(`  ${theme.dim("Use")} ${theme.info("/export <file>")} ${theme.dim("to save")}`);
       console.log();
     },
@@ -548,20 +551,19 @@ async function connectToDevice(): Promise<boolean> {
     ui.stopSpinner();
     ui.printSetupOk("Connected to appium-mcp");
 
-    // Create Appium session
-    ui.startSpinner("Creating Appium session…");
-    const sessionResult = await mcpClient.callTool("create_session", androidCreateSessionArgs(config));
-    const resultText = extractText(sessionResult);
-    if (resultText.toLowerCase().includes("error") || resultText.toLowerCase().includes("failed")) {
-      throw new Error(resultText);
-    }
-    ui.stopSpinner();
-    ui.printSetupOk("Appium session created");
+    // Full device setup pipeline (platform → device → iOS setup → session)
+    const deviceResult = await setupDevice(mcpClient, {
+      cliPlatform: _deviceArgs.platform ?? null,
+      cliDeviceType: _deviceArgs.deviceType ?? null,
+      cliUdid: _deviceArgs.udid ?? null,
+      cliDeviceName: _deviceArgs.deviceName ?? null,
+      config,
+    });
 
     // Initialize app resolver for "open X app" commands
     ui.startSpinner("Loading installed apps…");
     const appResolver = new AppResolver();
-    await appResolver.initialize(mcpClient);
+    await appResolver.initialize(mcpClient, deviceResult.platform);
     state.appResolver = appResolver;
     ui.stopSpinner();
     ui.printSetupOk("App resolver ready");
@@ -595,7 +597,18 @@ async function connectToDevice(): Promise<boolean> {
 
 // ─── Main REPL ──────────────────────────────────────────
 
-export async function runPlayground(): Promise<void> {
+export interface PlaygroundDeviceArgs {
+  platform?: "android" | "ios" | null;
+  deviceType?: "simulator" | "real" | null;
+  udid?: string | null;
+  deviceName?: string | null;
+}
+
+/** Stash device args so connectToDevice can use them */
+let _deviceArgs: PlaygroundDeviceArgs = {};
+
+export async function runPlayground(deviceArgs?: PlaygroundDeviceArgs): Promise<void> {
+  if (deviceArgs) _deviceArgs = deviceArgs;
   printPlaygroundHeader();
 
   // Connect to device first
@@ -603,6 +616,10 @@ export async function runPlayground(): Promise<void> {
   if (!connected) {
     process.exit(1);
   }
+
+  // Ensure stdin is flowing before creating the REPL readline.
+  // Prior device-setup steps (spinners, MCP calls) can leave stdin paused.
+  if (process.stdin.isPaused()) process.stdin.resume();
 
   const rl = readline.createInterface({
     input: process.stdin,

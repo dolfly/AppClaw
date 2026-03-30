@@ -6,6 +6,18 @@ const envSchema = z.object({
   LLM_API_KEY: z.string().default(""),
   LLM_MODEL: z.string().default(""),
 
+  /** Target platform: "android" or "ios". Empty = prompt on macOS, default android elsewhere. */
+  PLATFORM: z.enum(["android", "ios", ""]).default(""),
+
+  /** iOS device type: "simulator" or "real". Only used when PLATFORM=ios. */
+  DEVICE_TYPE: z.enum(["simulator", "real", ""]).default(""),
+
+  /** Device UDID to target. Skips interactive device picker when set. */
+  DEVICE_UDID: z.string().default(""),
+
+  /** Device name to target (e.g. "iPhone 16 Pro"). Alternative to DEVICE_UDID. */
+  DEVICE_NAME: z.string().default(""),
+
   MCP_TRANSPORT: z.enum(["stdio", "sse"]).default("stdio"),
   MCP_HOST: z.string().default("localhost"),
   MCP_PORT: z.coerce.number().default(8080),

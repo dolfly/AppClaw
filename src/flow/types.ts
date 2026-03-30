@@ -16,7 +16,7 @@ export type FlowStep =
   | ({ kind: "enter" } & Verbatim)
   | ({ kind: "back" } & Verbatim)
   | ({ kind: "home" } & Verbatim)
-  | ({ kind: "swipe"; direction: "up" | "down" | "left" | "right" } & Verbatim)
+  | ({ kind: "swipe"; direction: "up" | "down" | "left" | "right"; repeat?: number } & Verbatim)
   | ({ kind: "assert"; text: string } & Verbatim)
   | ({ kind: "scrollAssert"; text: string; direction: "up" | "down" | "left" | "right"; maxScrolls: number } & Verbatim)
   | ({ kind: "getInfo"; query: string } & Verbatim)

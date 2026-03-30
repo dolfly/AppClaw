@@ -290,6 +290,11 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
       const domHint = stuck.getDOMRecoveryHint(goal, screen.dom, triedSelectors);
       stuckHint += "\n\n" + domHint;
 
+      // iOS-specific navigation hints — iOS has no hardware back button
+      if (detectedPlatform === "ios") {
+        stuckHint += "\n\niOS HINT: There is NO hardware back button. To go back, look for a '< Back' or '< [label]' button in the top navigation bar, or use go_back (swipe from left edge). To dismiss overlays, look for 'Done', 'Cancel', or 'X' buttons.";
+      }
+
       if (alternatives.length > 0) {
         stuckHint += "\n\nSuggested alternatives:\n" +
           alternatives.map((a, i) => `${i + 1}. ${a}`).join("\n");

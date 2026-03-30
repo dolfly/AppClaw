@@ -168,27 +168,16 @@ function preCheck(instruction: string): PreCheckResult | null {
     return { step: { kind: "enter", verbatim: t } };
   }
 
-  // 6. Visibility assert — any instruction starting with an assert verb.
-  //    Extracts the subject and routes directly to isElementVisible, skipping understandAndLocate.
-  //    Handles typos in suffixes (e.g. "viisble") by not requiring exact visibility keywords —
-  //    just strip the verb prefix and pass the rest to the vision model.
+  // 6. Visibility assert — any instruction starting with an assert/verify verb,
+  //    or "is X visible?" pattern. Pass the full instruction to the vision model
+  //    as-is — let the LLM interpret what to check instead of brittle regex parsing.
   const ASSERT_VERB_RE = /^(?:verify|validate|check|assert|confirm|ensure)\s+/i;
   if (ASSERT_VERB_RE.test(t)) {
-    const text = t
-      .replace(ASSERT_VERB_RE, "")
-      .replace(/^(?:that\s+)?(?:the\s+)?(?:element\s+(?:with\s+)?(?:text\s+)?)?/i, "")
-      .replace(/["']/g, "")
-      .replace(/[.!?]+$/g, "")
-      .trim();
-    if (text) return { assertQuery: text };
+    return { assertQuery: instruction.trim() };
   }
-  // "is X visible?" pattern
-  const isVisibleMatch = t.match(
-    /^is\s+(?:the\s+)?(?:element\s+(?:with\s+)?(?:text\s+)?)?["']?(.+?)["']?\s+(?:visible|present|shown|displayed|there|on\s+(?:the\s+)?screen)\s*\??[\s.!?]*$/i
-  );
-  if (isVisibleMatch) {
-    const text = isVisibleMatch[1].replace(/[.!?]+$/g, "").trim();
-    if (text) return { assertQuery: text };
+  // "is X visible?" / "is X on screen?" pattern
+  if (/^is\s+.+\s+(?:visible|present|shown|displayed|there|on\s+(?:the\s+)?screen)\s*\??/i.test(t)) {
+    return { assertQuery: instruction.trim() };
   }
 
   // 7. Questions about the screen → getInfo
@@ -273,7 +262,9 @@ export async function visionExecute(
     };
   }
   if (pre?.assertQuery) {
-    // Visibility assert — screenshot + isElementVisible (skip understandAndLocate)
+    // Visibility assert — screenshot + isElementVisible (skip understandAndLocate).
+    // Pass the user's full instruction to the vision model — let the LLM interpret
+    // what to check instead of brittle text extraction.
     const rawImage = await screenshot(mcp);
     const imageBase64 = rawImage ? await downscaleForVision(rawImage) : rawImage;
     if (!imageBase64) {
@@ -283,9 +274,7 @@ export async function visionExecute(
       };
     }
     const client = new StarkVisionClient({ apiKey, model: getStarkVisionModel(), disableThinking: true });
-    const text = pre.assertQuery;
-    const isVisualQuery = /\b(red|blue|green|yellow|white|black|orange|purple|pink|grey|gray|color|colour|icon|image|logo|pin|dot|marker|badge|circle|arrow|button|bar|line|border|shadow|highlight|map|chart|graph|photo|picture|thumbnail|avatar|checkbox|checked|unchecked|star|rating|spinner|loading|progress)\b/i.test(text);
-    const visQuery = isVisualQuery ? text : `the text "${text}"`;
+    const visQuery = pre.assertQuery;
     const t0 = performance.now();
     const visResponse = await client.isElementVisible(imageBase64, visQuery, true);
     logTiming("isElementVisible", Math.round(performance.now() - t0));
@@ -297,12 +286,12 @@ export async function visionExecute(
       visible = /\btrue\b/i.test(visResponse) && !/\bfalse\b/i.test(visResponse);
     }
     return {
-      step: { kind: "assert", text, verbatim: instruction },
+      step: { kind: "assert", text: visQuery, verbatim: instruction },
       result: {
         success: visible,
         message: visible
-          ? `Verified "${text}" is visible (via vision)`
-          : `Assertion failed: "${text}" not found on screen`,
+          ? `Assertion passed (via vision)`
+          : `Assertion failed: not verified on screen`,
       },
     };
   }
@@ -397,15 +386,11 @@ export async function visionExecute(
     return { step, result: { success: false, message: "__needs_executeStep__" } };
   }
 
-  // Verify/assert
+  // Verify/assert — pass the user's original instruction to the vision model
   if (ASSERT_ACTIONS.has(actionName)) {
-    const text = value || locators[0]?.element || instruction;
-    const step: FlowStep = { kind: "assert", text, verbatim: instruction };
-    // Already have screenshot — use vision assert directly
+    const step: FlowStep = { kind: "assert", text: instruction, verbatim: instruction };
     const t2 = performance.now();
-    const isVisualQuery = /\b(red|blue|green|yellow|white|black|orange|purple|pink|grey|gray|color|colour|icon|image|logo|pin|dot|marker|badge|circle|arrow|button|bar|line|border|shadow|highlight|map|chart|graph|photo|picture|thumbnail|avatar|checkbox|checked|unchecked|star|rating|spinner|loading|progress)\b/i.test(text);
-    const visQuery = isVisualQuery ? text : `the text "${text}"`;
-    const visResponse = await client.isElementVisible(imageBase64, visQuery, true);
+    const visResponse = await client.isElementVisible(imageBase64, instruction, true);
     logTiming("isElementVisible", Math.round(performance.now() - t2));
     let visible = false;
     const visJsonStr = visResponse.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
@@ -420,8 +405,8 @@ export async function visionExecute(
       result: {
         success: visible,
         message: visible
-          ? `Verified "${text}" is visible (via vision)`
-          : `Assertion failed: "${text}" not found on screen`,
+          ? `Assertion passed (via vision)`
+          : `Assertion failed: not verified on screen`,
       },
     };
   }
@@ -439,7 +424,7 @@ export async function visionExecute(
       await sleep(300);
     }
 
-    // Type via keyboard
+    // Strategy 1: ADB keyboard input (Android — fast and reliable)
     const udid = await detectDeviceUdid();
     if (udid) {
       const kb = await typeViaKeyboard(value, udid);
@@ -450,6 +435,36 @@ export async function visionExecute(
         };
       }
     }
+
+    // Strategy 2: appium_send_keys (cross-platform — works on iOS and Android)
+    try {
+      const sendResult = await mcp.callTool("appium_send_keys", { text: value });
+      const sendText = sendResult.content?.map((c: any) => c.type === "text" ? c.text : "").join("") ?? "";
+      if (!sendText.toLowerCase().includes("error") && !sendText.toLowerCase().includes("failed")) {
+        return {
+          step,
+          result: { success: true, message: `Typed "${value}"${target ? ` in "${target}"` : ""}` },
+        };
+      }
+    } catch { /* try next strategy */ }
+
+    // Strategy 3: appium_set_value on active element
+    try {
+      const activeResult = await mcp.callTool("appium_get_active_element", {});
+      const activeText = activeResult.content?.map((c: any) => c.type === "text" ? c.text : "").join("") ?? "";
+      const uuidMatch = activeText.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      if (uuidMatch) {
+        await mcp.callTool("appium_clear_element", { elementUUID: uuidMatch[1] }).catch(() => {});
+        const setResult = await mcp.callTool("appium_set_value", { elementUUID: uuidMatch[1], text: value });
+        const setText = setResult.content?.map((c: any) => c.type === "text" ? c.text : "").join("") ?? "";
+        if (!setText.toLowerCase().includes("error") && !setText.toLowerCase().includes("failed")) {
+          return {
+            step,
+            result: { success: true, message: `Typed "${value}"${target ? ` in "${target}"` : ""}` },
+          };
+        }
+      }
+    } catch { /* exhausted all strategies */ }
 
     return { step, result: { success: false, message: "Could not type text" } };
   }

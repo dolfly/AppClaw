@@ -123,11 +123,18 @@ function scoreTapMatch(el: UIElement, needle: string): number {
 
 /**
  * Press Enter/Return key — tries multiple strategies:
- * 1. appium_execute_script with mobile: shell (Android keyevent 66)
- * 2. ADB keyevent fallback
+ * 1. appium_mobile_press_key with ENTER (works cross-platform)
+ * 2. appium_execute_script with mobile: shell (Android keyevent 66)
+ * 3. ADB keyevent fallback (Android only)
  */
 async function pressEnterKey(mcp: MCPClient): Promise<ActionResult> {
-  // Strategy 1: mobile: shell via appium_execute_script (Android)
+  // Strategy 1: cross-platform via appium_mobile_press_key
+  try {
+    await mcp.callTool("appium_mobile_press_key", { key: "ENTER" });
+    return { success: true, message: "Pressed Enter" };
+  } catch { /* try next strategy */ }
+
+  // Strategy 2: mobile: shell via appium_execute_script (Android)
   try {
     await mcp.callTool("appium_execute_script", {
       script: "mobile: shell",
@@ -136,7 +143,7 @@ async function pressEnterKey(mcp: MCPClient): Promise<ActionResult> {
     return { success: true, message: "Pressed Enter" };
   } catch { /* try next strategy */ }
 
-  // Strategy 2: ADB fallback
+  // Strategy 3: ADB fallback (Android only)
   try {
     const udid = await detectDeviceUdid();
     const androidHome =
@@ -704,14 +711,26 @@ export async function executeStep(
       await mcp.callTool("appium_mobile_press_key", { key: "HOME" });
       return { success: true, message: "Home" };
     case "swipe": {
-      const result = await mcp.callTool("appium_scroll", { direction: step.direction });
-      const text =
-        result.content?.map((c: { type: string; text?: string }) => (c.type === "text" ? c.text : "")).join("") ??
-        "";
-      const bad = text.toLowerCase().includes("error") || text.toLowerCase().includes("failed");
+      // appium_scroll only supports up/down; use appium_swipe for left/right
+      const dir = step.direction;
+      const count = step.repeat ?? 1;
+      const toolName = (dir === "left" || dir === "right") ? "appium_swipe" : "appium_scroll";
+      let lastError = "";
+      for (let i = 0; i < count; i++) {
+        const result = await mcp.callTool(toolName, { direction: dir });
+        const text =
+          result.content?.map((c: { type: string; text?: string }) => (c.type === "text" ? c.text : "")).join("") ??
+          "";
+        const bad = text.toLowerCase().includes("error") || text.toLowerCase().includes("failed");
+        if (bad) {
+          lastError = text.slice(0, 200);
+          return { success: false, message: lastError };
+        }
+        if (i < count - 1) await sleep(300);
+      }
       return {
-        success: !bad,
-        message: bad ? text.slice(0, 200) : `Swiped ${step.direction}`,
+        success: true,
+        message: count > 1 ? `Swiped ${dir} ${count} times` : `Swiped ${dir}`,
       };
     }
     case "assert":

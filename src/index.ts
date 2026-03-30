@@ -12,9 +12,6 @@
 
 import { loadConfig } from "./config.js";
 import { createMCPClient } from "./mcp/client.js";
-import { extractText } from "./mcp/tools.js";
-import { androidCreateSessionArgs } from "./mcp/session-caps.js";
-import { setDeviceScreenSize } from "./vision/window-size.js";
 import { createLLMProvider, buildModel, buildThinkingOptions } from "./llm/provider.js";
 import { getScreenState } from "./perception/screen.js";
 import { AppResolver } from "./agent/app-resolver.js";
@@ -31,7 +28,11 @@ import { prepareScreenshotForLlm } from "./vision/prepare-screenshot-for-llm.js"
 import { runExplorer } from "./explorer/index.js";
 import type { ExplorerConfig } from "./explorer/types.js";
 import { runPlayground } from "./playground/index.js";
+import { setupDevice } from "./device/index.js";
 import * as ui from "./ui/terminal.js";
+
+export type Platform = "android" | "ios";
+export type DeviceType = "simulator" | "real";
 
 interface CLIArgs {
   goal: string;
@@ -46,34 +47,81 @@ interface CLIArgs {
   outputDir: string;
   maxScreens: number;
   maxDepth: number;
+  platform: Platform | null;
+  deviceType: DeviceType | null;
+  deviceUdid: string | null;
+  deviceName: string | null;
 }
 
 function printHelp(): void {
-  console.log(`
-  Usage: appclaw [options] [goal]
+  const c = {
+    flag: ui.theme.info,
+    arg: ui.theme.warn,
+    desc: ui.theme.dim,
+    section: ui.theme.bold,
+    example: ui.theme.white,
+    comment: ui.theme.muted,
+    brand: ui.theme.brand,
+    env: ui.theme.success,
+  };
 
-  Options:
-    --help              Show this help message
-    --version           Show version number
-    --flow <file.yaml>  Run declarative YAML steps (no LLM needed)
-    --playground        Interactive REPL to build YAML flows step-by-step
-    --explore <prd>     Explore mode: generate test flows from a PRD
-    --num-flows <N>     Number of flows to generate (default: 5)
-    --no-crawl          Skip device crawling (PRD-only flow generation)
-    --output-dir <dir>  Output directory for generated flows (default: generated-flows)
-    --max-screens <N>   Max screens to crawl (default: 10)
-    --max-depth <N>     Max navigation depth for crawling (default: 3)
+  console.log();
+  console.log(`  ${c.brand("appclaw")} ${c.desc("[options] [goal]")}`);
+  console.log();
 
-  Examples:
-    appclaw "Open Settings"
-    appclaw "Send hello on WhatsApp to Mom"
-    appclaw "Turn on WiFi"
-    appclaw --flow examples/flows/google-search.yaml
-    appclaw --playground
-    appclaw --explore "YouTube app that plays videos and lets users search"
-    appclaw --explore prd.txt --num-flows 10 --no-crawl
-    appclaw --explore "Settings app with WiFi, Bluetooth, Display" --num-flows 3
-`);
+  // ── Platform & Device ──
+  console.log(`  ${c.section("Platform & Device")}`);
+  console.log(`    ${c.flag("--platform")} ${c.arg("<android|ios>")}     ${c.desc("Target platform (prompt on macOS, android elsewhere)")}`);
+  console.log(`    ${c.flag("--device-type")} ${c.arg("<sim|real>")}     ${c.desc("iOS: simulator or real device")}`);
+  console.log(`    ${c.flag("--device")} ${c.arg("<name>")}              ${c.desc("Device name, partial match (e.g. \"iPhone 17 Pro\")")}`);
+  console.log(`    ${c.flag("--udid")} ${c.arg("<udid>")}                ${c.desc("Device UDID (skips picker)")}`);
+  console.log();
+
+  // ── Modes ──
+  console.log(`  ${c.section("Modes")}`);
+  console.log(`    ${c.flag("--flow")} ${c.arg("<file.yaml>")}           ${c.desc("Run declarative YAML steps (no LLM)")}`);
+  console.log(`    ${c.flag("--playground")}                    ${c.desc("Interactive REPL for building flows")}`);
+  console.log(`    ${c.flag("--explore")} ${c.arg("<prd>")}              ${c.desc("Generate test flows from a PRD")}`);
+  console.log(`    ${c.flag("--record")}                       ${c.desc("Record goal execution for replay")}`);
+  console.log(`    ${c.flag("--replay")} ${c.arg("<file>")}              ${c.desc("Replay a recorded session")}`);
+  console.log();
+
+  // ── Explorer ──
+  console.log(`  ${c.section("Explorer Options")}`);
+  console.log(`    ${c.flag("--num-flows")} ${c.arg("<N>")}              ${c.desc("Flows to generate (default: 5)")}`);
+  console.log(`    ${c.flag("--no-crawl")}                     ${c.desc("Skip device crawling (PRD-only)")}`);
+  console.log(`    ${c.flag("--output-dir")} ${c.arg("<dir>")}           ${c.desc("Output directory (default: generated-flows)")}`);
+  console.log();
+
+  // ── Examples ──
+  console.log(`  ${c.section("Examples")}`);
+  console.log();
+  console.log(`    ${c.comment("# Android (default)")}`);
+  console.log(`    ${c.example("appclaw \"Open Settings\"")}`);
+  console.log();
+  console.log(`    ${c.comment("# iOS Simulator (auto-selects booted sim)")}`);
+  console.log(`    ${c.example("appclaw --platform ios --device-type simulator \"Open Settings\"")}`);
+  console.log();
+  console.log(`    ${c.comment("# iOS Simulator — pick device by name")}`);
+  console.log(`    ${c.example("appclaw --platform ios --device-type simulator --device \"iPhone 17 Pro\" \"Open Safari\"")}`);
+  console.log();
+  console.log(`    ${c.comment("# iOS Real Device")}`);
+  console.log(`    ${c.example("appclaw --platform ios --device-type real --udid 00008120-XXXX \"Open Settings\"")}`);
+  console.log();
+  console.log(`    ${c.comment("# Playground on iOS")}`);
+  console.log(`    ${c.example("appclaw --playground --platform ios --device-type simulator")}`);
+  console.log();
+  console.log(`    ${c.comment("# YAML flow on Android")}`);
+  console.log(`    ${c.example("appclaw --flow examples/flows/google-search.yaml")}`);
+  console.log();
+
+  // ── Env Vars ──
+  console.log(`  ${c.section("Environment Variables")} ${c.desc("(CI-friendly, same as flags)")}`);
+  console.log(`    ${c.env("PLATFORM")}${c.desc("=")}${c.arg("ios")}                ${c.desc("Same as --platform")}`);
+  console.log(`    ${c.env("DEVICE_TYPE")}${c.desc("=")}${c.arg("simulator")}        ${c.desc("Same as --device-type")}`);
+  console.log(`    ${c.env("DEVICE_UDID")}${c.desc("=")}${c.arg("<udid>")}           ${c.desc("Same as --udid")}`);
+  console.log(`    ${c.env("DEVICE_NAME")}${c.desc("=")}${c.arg("<name>")}           ${c.desc("Same as --device")}`);
+  console.log();
 }
 
 function parseArgs(): CLIArgs {
@@ -100,6 +148,10 @@ function parseArgs(): CLIArgs {
   let outputDir = "generated-flows";
   let maxScreens = 10;
   let maxDepth = 3;
+  let platform: Platform | null = null;
+  let deviceType: DeviceType | null = null;
+  let deviceUdid: string | null = null;
+  let deviceName: string | null = null;
   const goalParts: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -125,12 +177,24 @@ function parseArgs(): CLIArgs {
       maxScreens = parseInt(args[++i] ?? "10", 10) || 10;
     } else if (args[i] === "--max-depth") {
       maxDepth = parseInt(args[++i] ?? "3", 10) || 3;
+    } else if (args[i] === "--platform") {
+      const val = args[++i];
+      if (val === "android" || val === "ios") platform = val;
+      else { console.error(`Invalid --platform: ${val}. Use "android" or "ios".`); process.exit(1); }
+    } else if (args[i] === "--device-type") {
+      const val = args[++i];
+      if (val === "simulator" || val === "real") deviceType = val;
+      else { console.error(`Invalid --device-type: ${val}. Use "simulator" or "real".`); process.exit(1); }
+    } else if (args[i] === "--udid") {
+      deviceUdid = args[++i] ?? null;
+    } else if (args[i] === "--device") {
+      deviceName = args[++i] ?? null;
     } else {
       goalParts.push(args[i]);
     }
   }
 
-  return { goal: goalParts.join(" ").trim(), record, replay, flow, playground, plan, explore, numFlows, noCrawl, outputDir, maxScreens, maxDepth };
+  return { goal: goalParts.join(" ").trim(), record, replay, flow, playground, plan, explore, numFlows, noCrawl, outputDir, maxScreens, maxDepth, platform, deviceType, deviceUdid, deviceName };
 }
 
 async function main() {
@@ -166,7 +230,12 @@ async function main() {
 
   // ─── Playground mode (interactive REPL → YAML) ───────────
   if (cliArgs.playground) {
-    await runPlayground();
+    await runPlayground({
+      platform: cliArgs.platform,
+      deviceType: cliArgs.deviceType,
+      udid: cliArgs.deviceUdid,
+      deviceName: cliArgs.deviceName,
+    });
     return;
   }
 
@@ -206,15 +275,14 @@ async function main() {
         ui.stopSpinner();
         ui.printSetupOk("Connected to appium-mcp");
 
-        // Create Appium session
-        ui.startSpinner("Creating Appium session...");
-        const sessionResult = await mcp.callTool("create_session", androidCreateSessionArgs(config));
-        const resultText = extractText(sessionResult);
-        if (resultText.toLowerCase().includes("error") || resultText.toLowerCase().includes("failed")) {
-          throw new Error(resultText);
-        }
-        ui.stopSpinner();
-        ui.printSetupOk("Appium session created");
+        // Full device setup pipeline (platform → device → iOS setup → session)
+        await setupDevice(mcp, {
+          cliPlatform: cliArgs.platform,
+          cliDeviceType: cliArgs.deviceType,
+          cliUdid: cliArgs.deviceUdid,
+          cliDeviceName: cliArgs.deviceName,
+          config,
+        });
       } catch (err: any) {
         ui.stopSpinner();
         ui.printWarning(`Device connection failed: ${err?.message ?? err}. Continuing without crawling.`);
@@ -256,24 +324,26 @@ async function main() {
         process.exit(1);
       }
 
-      ui.startSpinner("Creating Appium session…");
+      // Full device setup pipeline (platform → device → iOS setup → session)
+      let flowPlatform: "android" | "ios" = "android";
       try {
-        const sessionResult = await mcp.callTool("create_session", androidCreateSessionArgs(config));
-        const resultText = extractText(sessionResult);
-        if (resultText.toLowerCase().includes("error") || resultText.toLowerCase().includes("failed")) {
-          throw new Error(resultText);
-        }
-        ui.stopSpinner();
-        ui.printSetupOk("Appium session created");
+        const deviceResult = await setupDevice(mcp, {
+          cliPlatform: cliArgs.platform,
+          cliDeviceType: cliArgs.deviceType,
+          cliUdid: cliArgs.deviceUdid,
+          cliDeviceName: cliArgs.deviceName,
+          config,
+        });
+        flowPlatform = deviceResult.platform;
       } catch (err: unknown) {
         ui.stopSpinner();
         const msg = err instanceof Error ? err.message : String(err);
-        ui.printSetupError(`Failed to create Appium session: ${msg}`, "Connect a device/emulator: adb devices");
+        ui.printSetupError(`Device setup failed: ${msg}`, "Check device connection and try again.");
         process.exit(1);
       }
 
       const flowAppResolver = new AppResolver();
-      await flowAppResolver.initialize(mcp);
+      await flowAppResolver.initialize(mcp, flowPlatform);
 
       const result = await runYamlFlow(mcp, parsed.meta, parsed.steps, {
         stepDelayMs: config.STEP_DELAY,
@@ -333,47 +403,26 @@ async function main() {
     // Create LLM provider with dynamic tool discovery
     const llm = createLLMProvider(config, availableTools);
 
-    // Create Appium session (required before any device interaction)
-    ui.startSpinner("Creating Appium session...");
+    // Full device setup pipeline (platform → device → iOS setup → session)
+    let resolvedPlatform: "android" | "ios" = "android";
     try {
-      const sessionResult = await mcp.callTool("create_session", androidCreateSessionArgs(config));
-      const resultText = extractText(sessionResult);
-      if (resultText.toLowerCase().includes("error") || resultText.toLowerCase().includes("failed")) {
-        throw new Error(resultText);
-      }
-
-      // Get the real physical screen size from device info.
-      // The MCP tool appium_mobile_get_device_info calls /appium/device/info
-      // which returns realDisplaySize (e.g. "720x1600") — physical pixels.
-      try {
-        const result = await mcp.callTool("appium_mobile_get_device_info", {});
-        const text = extractText(result);
-        // Match realDisplaySize in the response
-        const sizeMatch = text.match(/realDisplaySize['":\s]+(\d+x\d+)/i);
-        if (sizeMatch) {
-          setDeviceScreenSize(sizeMatch[1]);
-        } else {
-          // Try JSON parse
-          try {
-            const info = JSON.parse(text);
-            if (info.realDisplaySize) setDeviceScreenSize(info.realDisplaySize);
-          } catch { /* not JSON */ }
-        }
-      } catch {
-        // appium_mobile_get_device_info not available — will fall back to other methods
-      }
-
-      ui.stopSpinner();
-      ui.printSetupOk("Appium session created");
+      const deviceResult = await setupDevice(mcp, {
+        cliPlatform: cliArgs.platform,
+        cliDeviceType: cliArgs.deviceType,
+        cliUdid: cliArgs.deviceUdid,
+        cliDeviceName: cliArgs.deviceName,
+        config,
+      });
+      resolvedPlatform = deviceResult.platform;
     } catch (err: any) {
       ui.stopSpinner();
-      ui.printSetupError(`Failed to create Appium session: ${err.message ?? err}`, "Make sure a device/emulator is connected: adb devices");
+      ui.printSetupError(`Device setup failed: ${err.message ?? err}`, "Check device connection and try again.");
       process.exit(1);
     }
 
     // Fetch installed apps for name → package resolution
     const appResolver = new AppResolver();
-    await appResolver.initialize(mcp);
+    await appResolver.initialize(mcp, resolvedPlatform);
 
     // ─── Always decompose goals into sub-goals ─────────
     ui.printPlanStart();

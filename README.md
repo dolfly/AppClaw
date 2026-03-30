@@ -114,10 +114,33 @@ AGENT_MODE=dom
 
 ## Usage
 
+### Platform & device selection
+
+AppClaw supports both Android and iOS (simulators + real devices). On macOS, you'll get an interactive prompt to choose. For CI or to skip prompts, use flags:
+
+```bash
+# Android (default — no flags needed)
+appclaw "Open Settings"
+
+# iOS Simulator (auto-selects the booted simulator)
+appclaw --platform ios --device-type simulator "Open Settings"
+
+# iOS Simulator — pick by name
+appclaw --platform ios --device-type simulator --device "iPhone 17 Pro" "Open Settings"
+
+# iOS Real Device — pick by UDID
+appclaw --platform ios --device-type real --udid 00008120-XXXX "Open Settings"
+
+# Env vars work too (great for .env or CI)
+PLATFORM=ios DEVICE_TYPE=simulator appclaw "Open Settings"
+```
+
+> **Tip:** If only one simulator is booted, it's auto-selected — no `--udid` needed.
+
 ### Agent mode (LLM-driven)
 
 ```bash
-# Interactive mode
+# Interactive mode (prompts for platform + goal)
 appclaw
 
 # Pass goal directly
@@ -180,6 +203,12 @@ Build YAML flows interactively on a real device — type commands and watch them
 
 ```bash
 appclaw --playground
+
+# iOS simulator
+appclaw --playground --platform ios --device-type simulator
+
+# Specific device
+appclaw --playground --platform ios --device-type simulator --device "iPhone 17 Pro"
 ```
 
 Features:
@@ -226,11 +255,18 @@ All configuration is via `.env`:
 
 | Variable | Default | Description |
 |---|---|---|
+| **Platform** | | |
+| `PLATFORM` | (prompt) | Target platform: `android` or `ios` |
+| `DEVICE_TYPE` | (prompt) | iOS device type: `simulator` or `real` |
+| `DEVICE_UDID` | (auto) | Device UDID — skips device picker |
+| `DEVICE_NAME` | (auto) | Device name — partial match (e.g. `iPhone 17 Pro`) |
+| **LLM** | | |
 | `LLM_PROVIDER` | `gemini` | LLM provider (`anthropic`, `openai`, `gemini`, `groq`, `ollama`) |
 | `LLM_API_KEY` | — | API key for your provider |
 | `LLM_MODEL` | (auto) | Model override (e.g. `gemini-2.0-flash`, `claude-sonnet-4-20250514`) |
 | `AGENT_MODE` | `vision` | `dom` (XML locators) or `vision` (screenshot-first) |
 | `VISION_LOCATE_PROVIDER` | `stark` | Vision backend for locating elements (`stark` or `appium_mcp`) |
+| **Agent** | | |
 | `MAX_STEPS` | `30` | Max steps per goal |
 | `STEP_DELAY` | `500` | Milliseconds between steps |
 | `LLM_THINKING` | `off` | Extended thinking/reasoning (`on` or `off`) |
@@ -273,20 +309,31 @@ Each step, AppClaw:
 ```
 Usage: appclaw [options] [goal]
 
-Options:
-  --help              Show help message
-  --version           Show version number
-  --flow <file.yaml>  Run declarative YAML steps (no LLM needed)
-  --playground        Interactive REPL to build YAML flows step-by-step
-  --explore <prd>     Generate test flows from a PRD or description
-  --num-flows <N>     Number of flows to generate (default: 5)
-  --no-crawl          Skip device crawling (PRD-only generation)
-  --output-dir <dir>  Output directory for generated flows
-  --max-screens <N>   Max screens to crawl (default: 10)
-  --max-depth <N>     Max navigation depth (default: 3)
-  --record            Record goal execution for replay
-  --replay <file>     Replay a recorded session
-  --plan              Decompose complex goals into sub-goals
+Platform & Device:
+  --platform <android|ios>        Target platform (default: prompt on macOS, android elsewhere)
+  --device-type <simulator|real>  iOS device type (default: prompt when --platform ios)
+  --device <name>                 Device by name, partial match (e.g. "iPhone 17 Pro")
+  --udid <udid>                   Device by UDID (skips device picker)
+
+Modes:
+  --flow <file.yaml>              Run declarative YAML steps (no LLM needed)
+  --playground                    Interactive REPL to build YAML flows
+  --explore <prd>                 Generate test flows from a PRD or description
+  --record                        Record goal execution for replay
+  --replay <file>                 Replay a recorded session
+
+Explorer:
+  --num-flows <N>                 Number of flows to generate (default: 5)
+  --no-crawl                      Skip device crawling (PRD-only generation)
+  --output-dir <dir>              Output directory for generated flows
+  --max-screens <N>               Max screens to crawl (default: 10)
+  --max-depth <N>                 Max navigation depth (default: 3)
+
+Environment variables (CI-friendly):
+  PLATFORM          android | ios
+  DEVICE_TYPE       simulator | real
+  DEVICE_UDID       Device UDID
+  DEVICE_NAME       Device name
 ```
 
 ## License

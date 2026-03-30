@@ -113,16 +113,18 @@ export function tryParseNaturalFlowLine(line: string): FlowStep | null {
     if (text) return { kind: "scrollAssert", text, direction, maxScrolls, verbatim };
   }
 
-  const swipeMatch = t.match(/^swipe\s+(up|down|left|right)\b/i);
+  const swipeMatch = t.match(/^swipe\s+(up|down|left|right)(?:\s+(\d+)\s*(?:times?))?/i);
   if (swipeMatch) {
     const direction = swipeMatch[1].toLowerCase() as "up" | "down" | "left" | "right";
-    return { kind: "swipe", direction, verbatim };
+    const repeat = swipeMatch[2] ? parseInt(swipeMatch[2], 10) : undefined;
+    return { kind: "swipe", direction, ...(repeat && repeat > 1 ? { repeat } : {}), verbatim };
   }
 
-  const scrollMatch = t.match(/^scroll\s+(up|down|left|right)\b/i);
+  const scrollMatch = t.match(/^scroll\s+(up|down|left|right)(?:\s+(\d+)\s*(?:times?))?/i);
   if (scrollMatch) {
     const direction = scrollMatch[1].toLowerCase() as "up" | "down" | "left" | "right";
-    return { kind: "swipe", direction, verbatim };
+    const repeat = scrollMatch[2] ? parseInt(scrollMatch[2], 10) : undefined;
+    return { kind: "swipe", direction, ...(repeat && repeat > 1 ? { repeat } : {}), verbatim };
   }
 
   // "wait" / "wait a moment" / "wait a bit" (no number) — default 2 seconds
@@ -151,10 +153,12 @@ export function tryParseNaturalFlowLine(line: string): FlowStep | null {
   const enterMatch = t.match(/^(?:press\s+enter|hit\s+enter|send\s+enter|pe[r]?form\s+search|submit|submit\s+search|submit\s+form|search|confirm|hit\s+return|press\s+return)$/i);
   if (enterMatch) return { kind: "enter", verbatim };
 
-  const assertMatch = t.match(/^(?:assert|verify|check)\s+(?:that\s+)?["']?(.+?)["']?\s+is\s+(?:visible|present|shown|displayed)$/i)
-    ?? t.match(/^(?:assert|verify|check)\s+(?:that\s+)?["']?(.+?)["']?$/i);
+  const assertMatch = t.match(/^(?:assert|verify|check)\s+(?:that\s+|if\s+)?["']?(.+?)["']?\s+is\s+(?:visible|present|shown|displayed|on\s+(?:the\s+)?screen|in\s+(?:the\s+)?screen)$/i)
+    ?? t.match(/^(?:assert|verify|check)\s+(?:that\s+|if\s+)?["']?(.+?)["']?\s+(?:visible|present|shown|displayed|on\s+(?:the\s+)?screen|in\s+(?:the\s+)?screen)$/i)
+    ?? t.match(/^(?:assert|verify|check)\s+(?:that\s+|if\s+)?["']?(.+?)["']?$/i);
   if (assertMatch) {
-    const text = stripTextPrefix(trimPunct(assertMatch[1].trim()));
+    // Don't strip trailing punctuation for asserts — "!" may be part of the actual text
+    const text = stripTextPrefix(assertMatch[1].trim());
     if (text) return { kind: "assert", text, verbatim };
   }
 

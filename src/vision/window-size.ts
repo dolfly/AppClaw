@@ -1,29 +1,44 @@
 /**
- * Resolve physical screen size for Stark coordinate scaling.
+ * Resolve screen size for Stark coordinate scaling.
  *
- * Appium W3C Actions expect physical pixel coordinates, so we must resolve
- * the real device resolution — not dp/logical pixels from scaled MJPEG frames.
+ * Android: Appium W3C Actions expect physical pixel coordinates.
+ *   The authoritative source is `realDisplaySize` from device info
+ *   (e.g. "720x1600"). We cache it after session creation.
  *
- * The authoritative source on Android is `realDisplaySize` from device info
- * (e.g. "720x1600"). This is equivalent to what appium-stark-vision uses
- * via `driver.caps.deviceScreenSize`. We cache it after session creation.
+ * iOS: XCUITest W3C Actions expect logical point coordinates (not pixels).
+ *   The authoritative source is `appium_get_window_rect` which returns points.
+ *   Screenshot dimensions are in pixels (3x on modern iPhones) and must be
+ *   divided by the scale factor before use.
  */
 
 import type { MCPClient, MCPToolResult } from "../mcp/types.js";
 import { pngDimensionsFromBase64 } from "./png-dimensions.js";
 
-/** Cached physical screen size set from session capabilities. */
+/** Cached screen size set from session capabilities (pixels for Android, points for iOS). */
 let cachedScreenSize: { width: number; height: number } | null = null;
+
+/** Current platform — affects whether we return pixels (Android) or points (iOS). */
+let currentPlatform: "android" | "ios" = "android";
 
 /**
  * Set the cached screen size from a "WxH" string (e.g. "720x1600").
- * Call after `create_session` so Stark coordinate scaling always uses physical pixels.
+ * Call after `create_session` so Stark coordinate scaling always uses the right coords.
  */
 export function setDeviceScreenSize(deviceScreenSize: string): void {
   const m = deviceScreenSize.match(/(\d+)\s*x\s*(\d+)/);
   if (m) {
     cachedScreenSize = { width: parseInt(m[1], 10), height: parseInt(m[2], 10) };
   }
+}
+
+/** Set the current platform so coordinate scaling knows pixel vs point mode. */
+export function setDevicePlatform(platform: "android" | "ios"): void {
+  currentPlatform = platform;
+}
+
+/** Get the current platform. */
+export function getDevicePlatform(): "android" | "ios" {
+  return currentPlatform;
 }
 
 function mcpResultText(result: MCPToolResult): string {
@@ -56,7 +71,9 @@ function tryParseSizeFromText(text: string): { width: number; height: number } |
 
 /**
  * Best-effort screen size from appium-mcp for Stark coordinate scaling.
- * Returns physical pixel dimensions suitable for W3C Actions.
+ *
+ * Android: returns physical pixel dimensions (W3C Actions use pixels).
+ * iOS: returns logical point dimensions (W3C Actions use points).
  */
 export async function getScreenSizeForStark(
   mcp: MCPClient,
@@ -65,16 +82,20 @@ export async function getScreenSizeForStark(
   // 0. Use cached deviceScreenSize (most reliable — set at session creation)
   if (cachedScreenSize) return cachedScreenSize;
 
-  // 1. Standard window rect tools
+  // 1. Standard window rect tools — returns POINTS on iOS, PIXELS on Android
+  //    This is the most reliable source for iOS since it gives the correct coordinate space.
   for (const name of ["appium_get_window_rect", "appium_get_window_size", "get_window_rect"] as const) {
     try {
       const result = await mcp.callTool(name, {});
       const parsed = tryParseSizeFromText(mcpResultText(result));
-      if (parsed) return parsed;
+      if (parsed) {
+        cachedScreenSize = parsed;
+        return parsed;
+      }
     } catch { /* tool missing */ }
   }
 
-  // 2. appium_mobile_get_device_info — returns realDisplaySize in physical pixels
+  // 2. appium_mobile_get_device_info — Android: realDisplaySize in physical pixels
   try {
     const result = await mcp.callTool("appium_mobile_get_device_info", {});
     const text = mcpResultText(result);
@@ -86,12 +107,38 @@ export async function getScreenSizeForStark(
     }
   } catch { /* tool missing */ }
 
-  // 3. Screenshot dimensions (last resort — may be dp with MJPEG)
+  // 3. Screenshot dimensions (last resort)
   const fromImage = pngDimensionsFromBase64(screenshotBase64);
-  if (fromImage) return fromImage;
+  if (fromImage) {
+    // iOS: screenshots are in physical pixels (e.g. 1320x2868 at 3x) but
+    // XCUITest W3C Actions expect logical points (e.g. 440x956).
+    // Divide by scale factor to get the correct tap coordinate space.
+    if (currentPlatform === "ios") {
+      const scale = guessIOSScaleFactor(fromImage.width, fromImage.height);
+      const pointSize = {
+        width: Math.round(fromImage.width / scale),
+        height: Math.round(fromImage.height / scale),
+      };
+      cachedScreenSize = pointSize;
+      return pointSize;
+    }
+    return fromImage;
+  }
 
   throw new Error(
     "Could not determine screen size for Stark. " +
       "Ensure appium-mcp exposes device info or window size tools."
   );
+}
+
+/**
+ * Guess the iOS display scale factor from screenshot pixel dimensions.
+ * Modern iPhones are 3x, older models and iPads may be 2x.
+ */
+function guessIOSScaleFactor(pixelWidth: number, pixelHeight: number): number {
+  // If either dimension divides evenly by 3 and gives a reasonable point size, use 3x
+  const maxDim = Math.max(pixelWidth, pixelHeight);
+  if (maxDim > 1800) return 3; // Modern iPhones (6+, X, 11-17 Pro etc.)
+  if (maxDim > 1200) return 2; // Older iPhones, iPads
+  return 1; // Already in points or very low res
 }
