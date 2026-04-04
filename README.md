@@ -336,6 +336,23 @@ Environment variables (CI-friendly):
   DEVICE_NAME       Device name
 ```
 
+## AI Agent Skills
+
+If you're using **Claude Code**, **Codex**, or another tool that supports [skills](https://github.com/vercel-labs/skills), add the AppClaw skills to get expert help writing YAML flows and using the CLI:
+
+```sh
+npx skills add AppiumTestDistribution/appclaw
+```
+
+This installs two skills:
+
+| Skill | What it does |
+|---|---|
+| `generate-appclaw-flow` | Generates YAML flow files — knows the exact step syntax, natural language patterns, phased formats, and variable interpolation |
+| `use-appclaw-cli` | Helps run flows, configure `.env`, set up devices, choose vision providers, and troubleshoot |
+
+Skills are auto-discovered if you're working inside a clone of this repo.
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` for the full text.

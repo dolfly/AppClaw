@@ -68,6 +68,8 @@ export interface FlowDoneEvent {
     stepsTotal: number;
     failedAt?: number;
     reason?: string;
+    failedPhase?: string;
+    phaseResults?: unknown[];
   };
 }
 export interface ErrorEvent {

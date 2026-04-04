@@ -1,15 +1,16 @@
-import { describe, test, expect, mock } from "bun:test";
-import { parseFlowYamlString } from "../../src/flow/parse-yaml-flow.js";
+import { describe, test, expect, vi } from "vitest";
 import { emptyBindings, type VariableBindings } from "../../src/flow/variable-resolver.js";
 
 // Mock the LLM parser so tests don't require an API key
-mock.module("../../src/flow/llm-parser.js", () => ({
+vi.mock("../../src/flow/llm-parser.js", () => ({
   resolveNaturalStep: async (instruction: string) => ({
     kind: "tap",
     label: instruction,
     verbatim: instruction,
   }),
 }));
+
+const { parseFlowYamlString } = await import("../../src/flow/parse-yaml-flow.js");
 
 // ── Flat format (legacy) ────────────────────────────────────────────
 
@@ -132,8 +133,8 @@ describe("parseFlowYamlString — phased format", () => {
 // ── Variable interpolation ──────────────────────────────────────────
 
 describe("parseFlowYamlString — variable interpolation", () => {
+  // Secrets are resolved from process.env, not from bindings
   const bindings: VariableBindings = {
-    secrets: { email: "user@test.com", password: "s3cret" },
     variables: { appName: "MyApp" },
   };
 
@@ -147,29 +148,39 @@ describe("parseFlowYamlString — variable interpolation", () => {
   });
 
   test("interpolates secrets in type steps", async () => {
-    const yaml = `- type '\${secrets.email}'\n- done`;
-    const result = await parseFlowYamlString(yaml, { bindings });
-    expect(result.steps[0].kind).toBe("type");
-    if (result.steps[0].kind === "type") {
-      expect(result.steps[0].text).toBe("user@test.com");
+    process.env.email = "user@test.com";
+    try {
+      const yaml = `- type '\${secrets.email}'\n- done`;
+      const result = await parseFlowYamlString(yaml, { bindings });
+      expect(result.steps[0].kind).toBe("type");
+      if (result.steps[0].kind === "type") {
+        expect(result.steps[0].text).toBe("user@test.com");
+      }
+    } finally {
+      delete process.env.email;
     }
   });
 
   test("interpolates in phased format", async () => {
-    const yaml = [
-      "setup:",
-      "  - open ${variables.appName}",
-      "steps:",
-      "  - type '${secrets.email}'",
-      "assertions:",
-      "  - assert Dashboard is visible",
-    ].join("\n");
+    process.env.email = "user@test.com";
+    try {
+      const yaml = [
+        "setup:",
+        "  - open ${variables.appName}",
+        "steps:",
+        "  - type '${secrets.email}'",
+        "assertions:",
+        "  - assert Dashboard is visible",
+      ].join("\n");
 
-    const result = await parseFlowYamlString(yaml, { bindings });
-    const setupStep = result.phases.find(p => p.phase === "setup")?.step;
-    expect(setupStep?.kind).toBe("openApp");
-    if (setupStep?.kind === "openApp") {
-      expect(setupStep.query).toBe("MyApp");
+      const result = await parseFlowYamlString(yaml, { bindings });
+      const setupStep = result.phases.find(p => p.phase === "setup")?.step;
+      expect(setupStep?.kind).toBe("openApp");
+      if (setupStep?.kind === "openApp") {
+        expect(setupStep.query).toBe("MyApp");
+      }
+    } finally {
+      delete process.env.email;
     }
   });
 

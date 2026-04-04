@@ -1,6 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { writeFileSync, mkdirSync, rmSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import {
   interpolate,
   hasPlaceholders,
@@ -198,7 +201,7 @@ describe("mergeBindings", () => {
 // ── loadEnvironmentFile ─────────────────────────────────────────────
 
 describe("loadEnvironmentFile", () => {
-  const tmpDir = join(import.meta.dir, ".tmp-env-test");
+  const tmpDir = join(__dirname, ".tmp-env-test");
 
   beforeEach(() => {
     mkdirSync(tmpDir, { recursive: true });
