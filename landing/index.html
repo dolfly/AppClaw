@@ -5,35 +5,140 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AppClaw — AI-Powered Mobile Automation Agent</title>
   <meta name="description" content="Tell AppClaw what to do in plain English. It figures out what to tap, type, and swipe — across Android and iOS. Use the CLI or the Cursor / VS Code Marketplace extension. YAML flows, playground, PRD-driven test generation.">
-  <meta name="theme-color" content="#020c18">
+  <meta name="theme-color" id="themeColorMeta" content="#ffffff">
   <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('appclaw-theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          var m = document.getElementById('themeColorMeta');
+          if (m) m.setAttribute('content', '#020c18');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+    html { color-scheme: light; scroll-behavior: smooth; }
+    html[data-theme="dark"] { color-scheme: dark; }
+
     :root {
-      --bg:       #020c18;
-      --bg-2:     #061122;
-      --bg-card:  #0a1628;
-      --border:   rgba(255,255,255,0.07);
-      --border-strong: rgba(255,255,255,0.14);
-      --text:     #eef2f7;
-      --text-2:   #7a90a8;
-      --text-3:   #405268;
-      --orange:   #f97316;
-      --orange-glow: rgba(249,115,22,0.18);
-      --cyan:     #22d3ee;
-      --cyan-glow: rgba(34,211,238,0.12);
-      --green:    #10b981;
-      --red:      #f87171;
+      --bg: #ffffff;
+      --bg-2: #f8fafc;
+      --bg-card: #f1f5f9;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-strong: rgba(15, 23, 42, 0.14);
+      --text: #0f172a;
+      --text-2: #64748b;
+      --text-3: #94a3b8;
+      --orange: #f97316;
+      --orange-glow: rgba(249, 115, 22, 0.12);
+      --cyan: #0ea5e9;
+      --cyan-glow: rgba(14, 165, 233, 0.12);
+      --green: #16a34a;
+      --red: #dc2626;
       --font-display: 'Bricolage Grotesque', sans-serif;
-      --font-body:    'DM Sans', sans-serif;
-      --font-mono:    'JetBrains Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --nav-surface: rgba(255, 255, 255, 0.88);
+      --grain-opacity: 0.09;
+      --hero-glow-1: radial-gradient(ellipse, rgba(249, 115, 22, 0.09) 0%, transparent 65%);
+      --hero-glow-2: radial-gradient(ellipse, rgba(14, 165, 233, 0.07) 0%, transparent 65%);
+      --hero-col-glow: radial-gradient(ellipse, rgba(249, 115, 22, 0.07) 0%, transparent 65%);
+      --parallel-glow: radial-gradient(ellipse 800px 500px at 50% -100px, rgba(14, 165, 233, 0.06) 0%, transparent 70%);
+      --arch-section-glow: radial-gradient(ellipse 700px 400px at 60% 50%, rgba(249, 115, 22, 0.07) 0%, transparent 70%);
+      --cta-glow: radial-gradient(ellipse 800px 500px at 50% 50%, rgba(249, 115, 22, 0.08) 0%, transparent 65%);
+      --cta-line-opacity: 0.14;
+
+      --btn-secondary-fill: rgba(15, 23, 42, 0.04);
+      --btn-secondary-hover-fill: rgba(15, 23, 42, 0.08);
+      --btn-secondary-hover-border: rgba(15, 23, 42, 0.22);
+      --btn-ghost-hover-fill: rgba(15, 23, 42, 0.06);
+
+      --pill-fill: rgba(15, 23, 42, 0.04);
+      --yaml-bar-fill: rgba(15, 23, 42, 0.04);
+      --shadow-yaml: 0 16px 48px rgba(15, 23, 42, 0.1);
+      --parallel-frame-border: rgba(14, 165, 233, 0.25);
+      --parallel-frame-shadow:
+        0 0 0 1px rgba(14, 165, 233, 0.08),
+        0 32px 80px rgba(15, 23, 42, 0.12),
+        0 0 60px rgba(14, 165, 233, 0.06);
+      --install-copy-hover: rgba(15, 23, 42, 0.1);
+      --icon-muted-bg: rgba(15, 23, 42, 0.08);
+      --mobile-menu-bg: rgba(255, 255, 255, 0.98);
+      --code-bg: rgba(14, 165, 233, 0.12);
+      --arch-node-hover-border: rgba(249, 115, 22, 0.4);
+      --link-cyan-border: rgba(14, 165, 233, 0.45);
+      --link-cyan-border-hover: rgba(14, 165, 233, 0.65);
+      --run-surface-link-border: rgba(14, 165, 233, 0.45);
+      --badge-agent-border: rgba(249, 115, 22, 0.32);
+      --badge-yaml-border: rgba(14, 165, 233, 0.3);
+      --badge-play-border: rgba(22, 163, 74, 0.32);
+      --syntax-k: #7c3aed;
+      --syntax-n: #0d9488;
+      --term-string: #0369a1;
     }
 
-    html { scroll-behavior: smooth; }
+    html[data-theme="dark"] {
+      --bg: #020c18;
+      --bg-2: #061122;
+      --bg-card: #0a1628;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --text: #eef2f7;
+      --text-2: #7a90a8;
+      --text-3: #405268;
+      --orange: #f97316;
+      --orange-glow: rgba(249, 115, 22, 0.18);
+      --cyan: #22d3ee;
+      --cyan-glow: rgba(34, 211, 238, 0.12);
+      --green: #10b981;
+      --red: #f87171;
+
+      --nav-surface: rgba(2, 12, 24, 0.72);
+      --grain-opacity: 0.35;
+      --hero-glow-1: radial-gradient(ellipse, rgba(249, 115, 22, 0.1) 0%, transparent 65%);
+      --hero-glow-2: radial-gradient(ellipse, rgba(34, 211, 238, 0.07) 0%, transparent 65%);
+      --hero-col-glow: radial-gradient(ellipse, rgba(249, 115, 22, 0.08) 0%, transparent 65%);
+      --parallel-glow: radial-gradient(ellipse 800px 500px at 50% -100px, rgba(34, 211, 238, 0.06) 0%, transparent 70%);
+      --arch-section-glow: radial-gradient(ellipse 700px 400px at 60% 50%, rgba(249, 115, 22, 0.04) 0%, transparent 70%);
+      --cta-glow: radial-gradient(ellipse 800px 500px at 50% 50%, rgba(249, 115, 22, 0.07) 0%, transparent 65%);
+      --cta-line-opacity: 0.12;
+
+      --btn-secondary-fill: rgba(255, 255, 255, 0.04);
+      --btn-secondary-hover-fill: rgba(255, 255, 255, 0.07);
+      --btn-secondary-hover-border: rgba(255, 255, 255, 0.2);
+      --btn-ghost-hover-fill: rgba(255, 255, 255, 0.04);
+
+      --pill-fill: rgba(255, 255, 255, 0.03);
+      --yaml-bar-fill: rgba(255, 255, 255, 0.02);
+      --shadow-yaml: 0 16px 48px rgba(0, 0, 0, 0.5);
+      --parallel-frame-border: rgba(34, 211, 238, 0.2);
+      --parallel-frame-shadow:
+        0 0 0 1px rgba(34, 211, 238, 0.08),
+        0 40px 100px rgba(0, 0, 0, 0.8),
+        0 0 100px rgba(34, 211, 238, 0.06);
+      --install-copy-hover: rgba(255, 255, 255, 0.08);
+      --icon-muted-bg: rgba(255, 255, 255, 0.06);
+      --mobile-menu-bg: rgba(2, 12, 24, 0.97);
+      --code-bg: rgba(34, 211, 238, 0.08);
+      --arch-node-hover-border: rgba(249, 115, 22, 0.3);
+      --link-cyan-border: rgba(34, 211, 238, 0.35);
+      --link-cyan-border-hover: rgba(34, 211, 238, 0.55);
+      --run-surface-link-border: rgba(34, 211, 238, 0.45);
+      --badge-agent-border: rgba(249, 115, 22, 0.25);
+      --badge-yaml-border: rgba(34, 211, 238, 0.25);
+      --badge-play-border: rgba(16, 185, 129, 0.25);
+      --syntax-k: #c792ea;
+      --syntax-n: #80cbc4;
+      --term-string: #a5d6ff;
+    }
 
     body {
       font-family: var(--font-body);
@@ -52,7 +157,7 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
       pointer-events: none;
       z-index: 1000;
-      opacity: 0.35;
+      opacity: var(--grain-opacity);
     }
 
     .container { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
@@ -78,10 +183,10 @@
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
       height: 60px;
       display: flex; align-items: center;
-      background: rgba(2, 12, 24, 0.72);
+      background: var(--nav-surface);
       backdrop-filter: blur(18px) saturate(160%);
       border-bottom: 1px solid transparent;
-      transition: border-color 0.3s;
+      transition: border-color 0.3s, background 0.25s;
     }
     nav.scrolled { border-bottom-color: var(--border); }
     .nav-inner {
@@ -116,7 +221,7 @@
       text-decoration: none;
       transition: color 0.2s, border-color 0.2s, background 0.2s;
     }
-    .btn-ghost:hover { color: var(--text); border-color: var(--border-strong); background: rgba(255,255,255,0.04); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-strong); background: var(--btn-ghost-hover-fill); }
     .btn-ghost svg { flex-shrink: 0; }
     .btn-orange {
       font-family: var(--font-display); font-size: 13px; font-weight: 700;
@@ -132,6 +237,26 @@
       color: var(--text-2); cursor: pointer; padding: 4px;
     }
 
+    .theme-toggle {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; flex-shrink: 0;
+      padding: 0; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .theme-toggle:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+      background: var(--btn-ghost-hover-fill);
+    }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+
     /* ───────────── HERO ───────────── */
     .hero {
       padding: 140px 0 100px;
@@ -143,7 +268,7 @@
       position: absolute;
       width: 900px; height: 700px;
       top: -200px; left: -300px;
-      background: radial-gradient(ellipse, rgba(249,115,22,0.1) 0%, transparent 65%);
+      background: var(--hero-glow-1);
       pointer-events: none;
     }
     .hero::after {
@@ -151,7 +276,7 @@
       position: absolute;
       width: 600px; height: 600px;
       bottom: -100px; right: -150px;
-      background: radial-gradient(ellipse, rgba(34,211,238,0.07) 0%, transparent 65%);
+      background: var(--hero-glow-2);
       pointer-events: none;
     }
     .hero-inner {
@@ -193,10 +318,10 @@
     }
     .hero-sub a {
       color: var(--cyan); font-weight: 600; text-decoration: none;
-      border-bottom: 1px solid rgba(34, 211, 238, 0.35);
+      border-bottom: 1px solid var(--link-cyan-border);
       transition: color 0.2s, border-color 0.2s;
     }
-    .hero-sub a:hover { color: var(--text); border-bottom-color: rgba(34, 211, 238, 0.55); }
+    .hero-sub a:hover { color: var(--text); border-bottom-color: var(--link-cyan-border-hover); }
     .hero-buttons {
       display: flex; gap: 12px; flex-wrap: wrap;
     }
@@ -212,14 +337,18 @@
     .btn-primary:hover { background: #ea580c; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(249,115,22,0.4); }
     .btn-secondary {
       font-size: 14px; font-weight: 500; color: var(--text-2);
-      background: rgba(255,255,255,0.04);
+      background: var(--btn-secondary-fill);
       border: 1px solid var(--border-strong);
       padding: 12px 24px; border-radius: 10px;
       text-decoration: none; cursor: pointer;
       display: inline-flex; align-items: center; gap: 8px;
       transition: color 0.2s, background 0.2s, border-color 0.2s;
     }
-    .btn-secondary:hover { color: var(--text); background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); }
+    .btn-secondary:hover {
+      color: var(--text);
+      background: var(--btn-secondary-hover-fill);
+      border-color: var(--btn-secondary-hover-border);
+    }
     /* Hero right column */
     .hero-right {
       display: grid;
@@ -231,7 +360,7 @@
     .hero-right::before {
       content: '';
       position: absolute; inset: -60px;
-      background: radial-gradient(ellipse, rgba(249,115,22,0.08) 0%, transparent 65%);
+      background: var(--hero-col-glow);
       pointer-events: none; z-index: -1;
     }
     .phone-frame {
@@ -258,7 +387,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border-strong);
       border-radius: 12px; overflow: hidden;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      box-shadow: var(--shadow-yaml);
       position: relative; top: 40px;
     }
     .hero-yaml::before {
@@ -318,8 +447,10 @@
     }
     .run-surface-text a:hover {
       color: var(--text);
-      border-bottom-color: rgba(34, 211, 238, 0.45);
+      border-bottom-color: var(--run-surface-link-border);
     }
+    .run-surface-text strong { color: var(--text); font-weight: 600; }
+    .term-string { color: var(--term-string); }
 
     /* ───────────── SECTION COMMON ───────────── */
     .section-eyebrow {
@@ -352,8 +483,7 @@
     .parallel-section::before {
       content: '';
       position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 800px 500px at 50% -100px, rgba(34,211,238,0.06) 0%, transparent 70%);
+      background: var(--parallel-glow);
       pointer-events: none;
     }
     /* Grid lines */
@@ -369,7 +499,7 @@
     }
     code {
       font-family: var(--font-mono); font-size: 0.875em;
-      color: var(--cyan); background: rgba(34,211,238,0.08);
+      color: var(--cyan); background: var(--code-bg);
       padding: 2px 7px; border-radius: 5px;
     }
     .parallel-inner {
@@ -379,11 +509,8 @@
     }
     .parallel-frame {
       border-radius: 14px; overflow: hidden;
-      border: 1px solid rgba(34,211,238,0.2);
-      box-shadow:
-        0 0 0 1px rgba(34,211,238,0.08),
-        0 40px 100px rgba(0,0,0,0.8),
-        0 0 100px rgba(34,211,238,0.06);
+      border: 1px solid var(--parallel-frame-border);
+      box-shadow: var(--parallel-frame-shadow);
     }
     .parallel-frame img { display: block; width: 100%; height: auto; }
     .parallel-copy { display: flex; flex-direction: column; gap: 28px; }
@@ -395,7 +522,7 @@
       font-size: 14px; font-weight: 500; color: var(--text-2);
       padding: 7px 16px; border-radius: 100px;
       border: 1px solid var(--border-strong);
-      background: rgba(255,255,255,0.03);
+      background: var(--pill-fill);
       white-space: nowrap;
     }
     .parallel-pill-dot {
@@ -411,7 +538,7 @@
     .yaml-bar {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 14px; border-bottom: 1px solid var(--border);
-      background: rgba(255,255,255,0.02);
+      background: var(--yaml-bar-fill);
     }
     .yaml-fname {
       font-family: var(--font-mono); font-size: 11px; color: var(--text-3);
@@ -421,9 +548,9 @@
       padding: 20px 24px;
       font-family: var(--font-mono); font-size: 14.5px; line-height: 2;
     }
-    .y-k { color: #c792ea; }
-    .y-v { color: #f97316; }
-    .y-n { color: #80cbc4; }
+    .y-k { color: var(--syntax-k); }
+    .y-v { color: var(--orange); }
+    .y-n { color: var(--syntax-n); }
     .y-c { color: var(--cyan); }
     .y-d { color: var(--text-3); }
     .y-s { color: var(--text-2); }
@@ -464,9 +591,9 @@
       padding: 4px 10px; border-radius: 5px;
       margin-bottom: 20px;
     }
-    .badge-agent  { color: var(--orange); background: var(--orange-glow); border: 1px solid rgba(249,115,22,0.25); }
-    .badge-yaml   { color: var(--cyan);   background: var(--cyan-glow);   border: 1px solid rgba(34,211,238,0.25); }
-    .badge-play   { color: var(--green);  background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); }
+    .badge-agent  { color: var(--orange); background: var(--orange-glow); border: 1px solid var(--badge-agent-border); }
+    .badge-yaml   { color: var(--cyan);   background: var(--cyan-glow);   border: 1px solid var(--badge-yaml-border); }
+    .badge-play   { color: var(--green);  background: rgba(16,185,129,0.1); border: 1px solid var(--badge-play-border); }
     .feature-card h3 {
       font-family: var(--font-display); font-size: 22px; font-weight: 700;
       color: var(--text); letter-spacing: -0.02em; margin-bottom: 10px; line-height: 1.25;
@@ -537,7 +664,7 @@
     .arch-section::before {
       content: '';
       position: absolute; inset: 0;
-      background: radial-gradient(ellipse 700px 400px at 60% 50%, rgba(249,115,22,0.04) 0%, transparent 70%);
+      background: var(--arch-section-glow);
       pointer-events: none;
     }
     .arch-inner {
@@ -554,7 +681,7 @@
       display: flex; align-items: center; gap: 14px;
       position: relative;
     }
-    .arch-node:hover { border-color: rgba(249,115,22,0.3); }
+    .arch-node:hover { border-color: var(--arch-node-hover-border); }
     .arch-node-icon {
       width: 32px; height: 32px; border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
@@ -563,7 +690,7 @@
     .icon-orange { background: rgba(249,115,22,0.15); color: var(--orange); }
     .icon-cyan   { background: rgba(34,211,238,0.1);  color: var(--cyan); }
     .icon-green  { background: rgba(16,185,129,0.1);  color: var(--green); }
-    .icon-gray   { background: rgba(255,255,255,0.06); color: var(--text-2); }
+    .icon-gray   { background: var(--icon-muted-bg); color: var(--text-2); }
     .arch-node-info { flex: 1; }
     .arch-node-name {
       font-family: var(--font-display); font-size: 16px; font-weight: 700;
@@ -642,7 +769,7 @@
     .cta-section::before {
       content: '';
       position: absolute; inset: 0;
-      background: radial-gradient(ellipse 800px 500px at 50% 50%, rgba(249,115,22,0.07) 0%, transparent 65%);
+      background: var(--cta-glow);
       pointer-events: none;
     }
     /* Diagonal orange line */
@@ -652,7 +779,7 @@
       width: 200%; height: 1px;
       top: 50%; left: -50%;
       background: linear-gradient(90deg, transparent 10%, var(--orange) 40%, var(--orange) 60%, transparent 90%);
-      opacity: 0.12;
+      opacity: var(--cta-line-opacity);
       transform: rotate(-8deg);
       pointer-events: none;
     }
@@ -672,7 +799,7 @@
       padding: 5px 12px; border-radius: 6px; cursor: pointer; letter-spacing: 0.04em;
       transition: color 0.2s, background 0.2s;
     }
-    .install-copy:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+    .install-copy:hover { color: var(--text); background: var(--install-copy-hover); }
     .cta-buttons {
       display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
       margin-bottom: 28px;
@@ -729,9 +856,11 @@
     .mobile-menu {
       display: none;
       position: fixed; top: 60px; left: 0; right: 0; z-index: 199;
-      background: rgba(2,12,24,0.97); backdrop-filter: blur(20px);
+      background: var(--mobile-menu-bg);
+      backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       padding: 16px 24px; flex-direction: column; gap: 4px;
+      transition: background 0.25s;
     }
     .mobile-menu.open { display: flex; }
     .mobile-menu a {
@@ -764,6 +893,7 @@
       .stats-row .stat-item:nth-child(3) { border-top: 1px solid var(--border); border-right: 1px solid var(--border); }
       .nav-links { display: none; }
       .nav-mobile-toggle { display: flex; }
+      .nav-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
       .footer-grid { grid-template-columns: 1fr; gap: 32px; }
     }
     @media (max-width: 480px) {
@@ -790,6 +920,15 @@
         <a href="usage.html">Usage Guide</a>
       </div>
       <div class="nav-right">
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to dark theme" title="Theme">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </button>
         <a class="btn-ghost" href="https://github.com/AppiumTestDistribution/appclaw" target="_blank" rel="noopener">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           Star
@@ -894,7 +1033,7 @@
         <a href="https://www.npmjs.com/package/appclaw" target="_blank" rel="noopener">CLI</a>
         (<code>npx appclaw</code>) for terminals and CI, or the
         <a href="https://marketplace.visualstudio.com/items?itemName=AppClaw.appclaw" target="_blank" rel="noopener">Visual Studio Marketplace</a>
-        extension for <strong style="color:var(--text)">Cursor</strong>, <strong style="color:var(--text)">VS Code</strong>, and forks that load the same extension catalog.
+        extension for <strong>Cursor</strong>, <strong>VS Code</strong>, and forks that load the same extension catalog.
       </p>
     </div>
   </section>
@@ -964,7 +1103,7 @@
               <span class="mini-term-title">Agent Mode</span>
             </div>
             <div class="mini-term-body">
-              <span style="color:var(--orange)">$</span> <span style="color:var(--text)">appclaw</span> <span style="color:#a5d6ff">"Turn on WiFi"</span><br>
+              <span style="color:var(--orange)">$</span> <span style="color:var(--text)">appclaw</span> <span class="term-string">"Turn on WiFi"</span><br>
               <br>
               <span style="color:var(--orange)">1/3</span> <span style="color:var(--text)">launch</span> <span style="color:var(--text-3)">→ Settings</span><br>
               <span style="color:var(--orange)">2/3</span> <span style="color:var(--text)">tap</span> <span style="color:var(--text-3)">→ Network &amp; internet</span><br>
@@ -987,7 +1126,7 @@
               <span class="mini-term-title">login-flow.yaml</span>
             </div>
             <div class="mini-term-body">
-              <span style="color:#c792ea">steps:</span><br>
+              <span style="color:var(--syntax-k)">steps:</span><br>
               &nbsp;&nbsp;<span style="color:var(--text-3)">-</span> <span style="color:var(--text)">open YouTube app</span><br>
               &nbsp;&nbsp;<span style="color:var(--text-3)">-</span> <span style="color:var(--text)">click on search icon</span><br>
               &nbsp;&nbsp;<span style="color:var(--text-3)">-</span> <span style="color:var(--text)">type "Appium 3.0"</span><br>
@@ -1242,6 +1381,35 @@
   </footer>
 
   <script>
+    // Theme (default light; persisted)
+    const root = document.documentElement;
+    const themeColorMeta = document.getElementById('themeColorMeta');
+    const themeToggle = document.getElementById('themeToggle');
+
+    function syncThemeUi() {
+      const dark = root.getAttribute('data-theme') === 'dark';
+      if (themeToggle) {
+        themeToggle.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+        themeToggle.setAttribute('title', dark ? 'Light theme' : 'Dark theme');
+      }
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', dark ? '#020c18' : '#ffffff');
+      }
+    }
+    syncThemeUi();
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        if (root.getAttribute('data-theme') === 'dark') {
+          root.removeAttribute('data-theme');
+          try { localStorage.setItem('appclaw-theme', 'light'); } catch (e) {}
+        } else {
+          root.setAttribute('data-theme', 'dark');
+          try { localStorage.setItem('appclaw-theme', 'dark'); } catch (e) {}
+        }
+        syncThemeUi();
+      });
+    }
+
     // Navbar scroll
     const navbar = document.getElementById('navbar');
     window.addEventListener('scroll', () => {
