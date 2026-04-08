@@ -109,7 +109,8 @@ export function normalizeStructured(raw: unknown, index: number): FlowStep | nul
     // ── Multi-key: drag { from, to } ──
     if (keys.includes('from') && keys.includes('to')) {
       const duration = o.duration != null ? Number(o.duration) : undefined;
-      const longPressDuration = o.longPressDuration != null ? Number(o.longPressDuration) : undefined;
+      const longPressDuration =
+        o.longPressDuration != null ? Number(o.longPressDuration) : undefined;
       return {
         kind: 'drag',
         from: String(o.from).trim(),
@@ -188,7 +189,9 @@ export function normalizeStructured(raw: unknown, index: number): FlowStep | nul
       if (toIdx !== -1) {
         return { kind: 'drag', from: val.slice(0, toIdx).trim(), to: val.slice(toIdx + 4).trim() };
       }
-      throw new Error(`Step ${index + 1}: drag requires "from to to" syntax, e.g. drag: "green dot to +100 mark"`);
+      throw new Error(
+        `Step ${index + 1}: drag requires "from to to" syntax, e.g. drag: "green dot to +100 mark"`
+      );
     }
     if (k === 'tap') return { kind: 'tap', label: String(v) };
     if (k === 'type') return { kind: 'type', text: String(v) };

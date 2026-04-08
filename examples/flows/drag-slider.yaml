@@ -22,5 +22,5 @@ name: Set ride price to +100
 #     from: green circle slider
 #     to: +100 mark
 
-- assert: "+100"
-- done: "Price slider set to +100"
+- assert: '+100'
+- done: 'Price slider set to +100'

@@ -553,10 +553,16 @@ export async function visionExecute(
     const [ty, tx] = toLocator.coordinates;
 
     if (fy === 0 && fx === 0) {
-      return { step, result: { success: false, message: `Drag failed: "${step.from}" is not visible on screen` } };
+      return {
+        step,
+        result: { success: false, message: `Drag failed: "${step.from}" is not visible on screen` },
+      };
     }
     if (ty === 0 && tx === 0) {
-      return { step, result: { success: false, message: `Drag failed: "${step.to}" is not visible on screen` } };
+      return {
+        step,
+        result: { success: false, message: `Drag failed: "${step.to}" is not visible on screen` },
+      };
     }
 
     const fromBbox = scaleCoordinates([fy, fx], screenSize);
