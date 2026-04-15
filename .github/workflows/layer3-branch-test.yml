@@ -4,13 +4,13 @@ name: AppClaw Action — Branch Test (Layer 3)
 # References the branch by name (not ./github-action) so it exercises the
 # full public action resolution path before the branch is tagged and published.
 #
-# Trigger: Actions tab → "AppClaw Action — Branch Test (Layer 3)" → Run workflow
+# Triggers:
+#   - Every pull_request (android YAML flow by default)
+#   - Actions tab → "Run workflow" for manual runs with custom inputs
 # Required secret: LLM_API_KEY
 
 on:
-  push:
-    branches: [feat/parallel-testing-video-recording]
-    paths: ['github-action/**']
+  pull_request:
   workflow_dispatch:
     inputs:
       flow:
@@ -30,18 +30,19 @@ on:
 
 jobs:
   # ── Test 1: YAML flow on Android ────────────────────────────────────────────
+  # Runs on every PR (default) and on manual dispatch with android + no goal
   android-flow:
     name: Android — YAML flow
     runs-on: ubuntu-latest
-    if: inputs.platform == 'android' && inputs.goal == ''
+    if: github.event_name == 'pull_request' || (inputs.platform == 'android' && inputs.goal == '')
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: AppiumTestDistribution/AppClaw/github-action@feat/parallel-testing-video-recording
+      - uses: AppiumTestDistribution/AppClaw/github-action@${{ github.head_ref || 'main' }}
         id: run
         with:
-          flow: ${{ inputs.flow }}
+          flow: ${{ inputs.flow || 'flows/youtube.yaml' }}
           platform: android
           provider: gemini
           api-key: ${{ secrets.LLM_API_KEY }}
@@ -52,15 +53,16 @@ jobs:
         run: echo "Report → ${{ steps.run.outputs.report-path }}"
 
   # ── Test 2: Natural language goal on Android ─────────────────────────────────
+  # Runs only on manual dispatch with a goal specified
   android-goal:
     name: Android — natural language goal
     runs-on: ubuntu-latest
-    if: inputs.platform == 'android' && inputs.goal != ''
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'android' && inputs.goal != ''
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: AppiumTestDistribution/AppClaw/github-action@feat/parallel-testing-video-recording
+      - uses: AppiumTestDistribution/AppClaw/github-action@${{ github.head_ref || 'main' }}
         id: run
         with:
           goal: ${{ inputs.goal }}
@@ -74,18 +76,19 @@ jobs:
         run: echo "Report → ${{ steps.run.outputs.report-path }}"
 
   # ── Test 3: YAML flow on iOS ─────────────────────────────────────────────────
+  # Runs only on manual dispatch with ios platform selected
   ios-flow:
     name: iOS — YAML flow
     runs-on: macos-14
-    if: inputs.platform == 'ios'
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios'
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: AppiumTestDistribution/AppClaw/github-action@feat/parallel-testing-video-recording
+      - uses: AppiumTestDistribution/AppClaw/github-action@${{ github.head_ref || 'main' }}
         id: run
         with:
-          flow: ${{ inputs.flow }}
+          flow: ${{ inputs.flow || 'flows/youtube.yaml' }}
           platform: ios
           provider: gemini
           api-key: ${{ secrets.LLM_API_KEY }}
