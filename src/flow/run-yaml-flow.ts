@@ -1055,10 +1055,19 @@ export async function executeStep(
       }
 
       let pinchArgs: Record<string, unknown> = { action: 'pinch_zoom', scale: step.scale };
-      if (elementUUID && !isAIElement(elementUUID)) {
-        // Only pass real Appium element UUIDs — ai-element: synthetic UUIDs are not
-        // in Appium's element cache and will cause a 404 in the pinch handler.
-        pinchArgs.elementUUID = elementUUID;
+      if (elementUUID) {
+        if (isAIElement(elementUUID)) {
+          // ai-element: UUIDs are not in Appium's cache — extract the center coordinates
+          // and pass them as x,y so the pinch is centered on the located element.
+          const coords = parseAIElementCoords(elementUUID);
+          if (coords) {
+            pinchArgs.x = coords.x;
+            pinchArgs.y = coords.y;
+          }
+        } else {
+          // Real Appium UUID: pass directly for element-bounds-based pinch.
+          pinchArgs.elementUUID = elementUUID;
+        }
       }
 
       const zoomResult = await mcp.callTool('appium_gesture', pinchArgs);
