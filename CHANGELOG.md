@@ -2,8 +2,8 @@
 
 ### Bug Fixes
 
-* ci ([#24](https://github.com/AppiumTestDistribution/AppClaw/issues/24)) ([18df11e](https://github.com/AppiumTestDistribution/AppClaw/commit/18df11e9de978cec4ccd9c02f980773acce7d26b))
-* zoom in a specific area ([5bee03d](https://github.com/AppiumTestDistribution/AppClaw/commit/5bee03d0b18b0fbf4f12f87c831049c3566af0b2))
+- ci ([#24](https://github.com/AppiumTestDistribution/AppClaw/issues/24)) ([18df11e](https://github.com/AppiumTestDistribution/AppClaw/commit/18df11e9de978cec4ccd9c02f980773acce7d26b))
+- zoom in a specific area ([5bee03d](https://github.com/AppiumTestDistribution/AppClaw/commit/5bee03d0b18b0fbf4f12f87c831049c3566af0b2))
 
 ## [1.3.0](https://github.com/AppiumTestDistribution/AppClaw/compare/v1.2.1...v1.3.0) (2026-04-26)
 

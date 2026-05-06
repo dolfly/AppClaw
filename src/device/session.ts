@@ -10,6 +10,10 @@ import type { AppClawConfig } from '../config.js';
 import type { Platform, DeviceType } from '../index.js';
 import { extractText } from '../mcp/tools.js';
 import { setDeviceScreenSize, setDevicePlatform } from '../vision/window-size.js';
+import {
+  extractIOSModelFromDeviceInfo,
+  getIOSScreenSizeFromModel,
+} from '../vision/ios-device-map.js';
 import { SessionScopedMCPClient } from '../mcp/session-client.js';
 import * as ui from '../ui/terminal.js';
 
@@ -190,49 +194,69 @@ async function createLambdaTestSession(
 
 /** Detect device screen size after session creation */
 async function detectScreenSize(mcp: MCPClient, platform: Platform): Promise<void> {
-  // iOS: try window rect first — returns POINTS (the correct coordinate space for XCUITest)
   if (platform === 'ios') {
-    for (const tool of ['appium_get_window_rect', 'appium_get_window_size'] as const) {
+    // iOS strategy 1: exact point dimensions from hardware model identifier.
+    // This is the most reliable source — avoids any ambiguity between pixels and points.
+    try {
+      const result = await mcp.callTool('appium_mobile_device_info', {});
+      const text = extractText(result);
+      const modelId = extractIOSModelFromDeviceInfo(text);
+      if (modelId) {
+        const size = getIOSScreenSizeFromModel(modelId);
+        if (size) {
+          setDeviceScreenSize(mcp, `${size.width}x${size.height}`);
+          return;
+        }
+      }
+    } catch {
+      /* tool not available */
+    }
+
+    // iOS strategy 2: appium_get_window_rect — returns logical points per W3C spec.
+    // Only accept values that are plausibly in point space (max edge ≤ 1500).
+    // Values above that are likely physical pixels from a non-compliant MCP setup;
+    // skip them here and let getScreenSizeForStark correct them at runtime using
+    // the actual screenshot for comparison.
+    try {
+      const result = await mcp.callTool('appium_get_window_rect', {});
+      const text = extractText(result);
       try {
-        const result = await mcp.callTool(tool, {});
-        const text = extractText(result);
-        try {
-          const obj = JSON.parse(text);
-          const w = Number(obj.width ?? obj.w);
-          const h = Number(obj.height ?? obj.h);
-          if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+        const obj = JSON.parse(text);
+        const w = Number(obj.width ?? obj.w);
+        const h = Number(obj.height ?? obj.h);
+        if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+          if (Math.max(w, h) <= 1500) {
+            // Safe to treat as logical points
             setDeviceScreenSize(mcp, `${Math.round(w)}x${Math.round(h)}`);
             return;
           }
-        } catch {
-          /* not JSON */
-        }
-        const dimMatch = text.match(/(\d{2,5})\s*[x×,]\s*(\d{2,5})/);
-        if (dimMatch) {
-          setDeviceScreenSize(mcp, `${dimMatch[1]}x${dimMatch[2]}`);
-          return;
+          // Otherwise: likely pixels — skip; getScreenSizeForStark will correct at runtime
         }
       } catch {
-        /* tool not available */
+        /* not JSON */
       }
+    } catch {
+      /* tool not available */
     }
+
+    // iOS: don't fall through to appium_mobile_device_info for realDisplaySize —
+    // that field is Android-only (physical pixels, wrong coordinate space for iOS taps).
+    return;
   }
 
-  // Android / fallback: try device info
+  // Android: get physical pixel dimensions from device info
   try {
     const result = await mcp.callTool('appium_mobile_device_info', {});
     const text = extractText(result);
 
-    if (platform === 'android') {
-      // Android: realDisplaySize (e.g. "720x1600")
-      const sizeMatch = text.match(/realDisplaySize['":\s]+(\d+x\d+)/i);
-      if (sizeMatch) {
-        setDeviceScreenSize(mcp, sizeMatch[1]);
-        return;
-      }
+    // Android: realDisplaySize (e.g. "720x1600")
+    const sizeMatch = text.match(/realDisplaySize['":\s]+(\d+x\d+)/i);
+    if (sizeMatch) {
+      setDeviceScreenSize(mcp, sizeMatch[1]);
+      return;
     }
 
-    // Try JSON parse for both platforms
+    // Try JSON parse
     try {
       const info = JSON.parse(text);
       if (info.realDisplaySize) {
@@ -247,6 +271,5 @@ async function detectScreenSize(mcp: MCPClient, platform: Platform): Promise<voi
     }
   } catch {
     // Device info not available — getScreenSizeForStark will fall back to screenshot dims
-    // with iOS scale factor correction
   }
 }
