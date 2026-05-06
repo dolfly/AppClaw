@@ -1,3 +1,9 @@
+## [1.3.3](https://github.com/AppiumTestDistribution/AppClaw/compare/v1.3.2...v1.3.3) (2026-05-06)
+
+### Bug Fixes
+
+* update appium-mcp tool calls and fix vscode webview buttons ([4c95d8c](https://github.com/AppiumTestDistribution/AppClaw/commit/4c95d8c2f77cea1c47f93bd5ac0ffee629627de5))
+
 ## [1.3.2](https://github.com/AppiumTestDistribution/AppClaw/compare/v1.3.1...v1.3.2) (2026-05-06)
 
 ### Bug Fixes
