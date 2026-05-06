@@ -1197,7 +1197,8 @@ async function executeMetaTool(
         for (const fb of lpFallbackStrategies) {
           try {
             const uuid = await findElement(mcp, fb.s as any, lpSelector);
-            const lpResult = await mcp.callTool('appium_long_press', {
+            const lpResult = await mcp.callTool('appium_gesture', {
+              action: 'long_press',
               elementUUID: uuid,
               duration: lpDuration,
             });
@@ -1359,7 +1360,7 @@ async function executeMetaTool(
 
         // Clear existing text if we have an active element
         if (activeUuid) {
-          await mcp.callTool('appium_clear_element', { elementUUID: activeUuid }).catch(() => {});
+          await mcp.callTool('appium_set_value', { elementUUID: activeUuid, text: '' }).catch(() => {});
         }
 
         // Always use W3C Actions — works on local and cloud, Android and iOS

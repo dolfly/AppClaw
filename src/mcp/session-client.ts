@@ -19,7 +19,6 @@ import type { MCPClient, MCPToolResult, MCPToolInfo } from './types.js';
 const PRE_SESSION_TOOLS = new Set([
   'appium_session_management',
   'select_device',
-  'delete_all_sessions',
 ]);
 
 export class SessionScopedMCPClient implements MCPClient {

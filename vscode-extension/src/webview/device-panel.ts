@@ -615,35 +615,35 @@ export class DevicePanel {
         <div class="hitl-prompt" id="hitlPrompt"></div>
         <div class="hitl-input-row">
           <input type="text" id="hitlInput" placeholder="Enter response...">
-          <button class="btn-run" onclick="submitHitl()">Send</button>
+          <button class="btn-run" id="hitlSendBtn">Send</button>
         </div>
       </div>
 
-      <div id="rawLogToggle" onclick="toggleRawLog()" style="cursor:pointer;font-size:10px;color:var(--vscode-descriptionForeground);padding:2px 10px;border-top:1px solid var(--vscode-panel-border);user-select:none;">▸ Logs</div>
+      <div id="rawLogToggle" style="cursor:pointer;font-size:10px;color:var(--vscode-descriptionForeground);padding:2px 10px;border-top:1px solid var(--vscode-panel-border);user-select:none;">▸ Logs</div>
       <div id="debugLog" style="display:none;font-size:10px;color:var(--vscode-descriptionForeground);padding:3px 10px;max-height:120px;overflow-y:auto;font-family:monospace;"></div>
 
       <div class="input-area">
         <div style="display:flex;gap:6px;align-items:center;">
           <div id="modeToggle" style="display:flex;border-radius:4px;overflow:hidden;border:1px solid var(--vscode-input-border);font-size:11px;cursor:pointer;">
-            <span id="modeGoal" onclick="setMode('goal')" style="padding:2px 8px;background:var(--vscode-button-background);color:var(--vscode-button-foreground);">Goal</span>
-            <span id="modePlayground" onclick="setMode('playground')" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);">Playground</span>
+            <span id="modeGoal" style="padding:2px 8px;background:var(--vscode-button-background);color:var(--vscode-button-foreground);cursor:pointer;">Goal</span>
+            <span id="modePlayground" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);cursor:pointer;">Playground</span>
           </div>
           <div id="platformToggle" style="display:flex;border-radius:4px;overflow:hidden;border:1px solid var(--vscode-input-border);font-size:11px;cursor:pointer;">
-            <span id="platAndroid" onclick="setPlatform('android')" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);">Android</span>
-            <span id="platIos" onclick="setPlatform('ios')" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);">iOS</span>
+            <span id="platAndroid" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);cursor:pointer;">Android</span>
+            <span id="platIos" style="padding:2px 8px;background:var(--vscode-input-background);color:var(--vscode-input-foreground);cursor:pointer;">iOS</span>
           </div>
           <span id="modeHint" style="font-size:10px;color:var(--vscode-descriptionForeground);flex:1;">AI agent executes your goal</span>
           <span id="playgroundActions" style="display:none;">
-            <button class="action-btn" onclick="sendSlash('/yaml')">YAML</button>
-            <button class="action-btn" onclick="exportFlow()">Export</button>
-            <button class="action-btn" onclick="sendSlash('/undo')">Undo</button>
-            <button class="action-btn" onclick="sendSlash('/clear')">Clear</button>
+            <button class="action-btn" id="actionYaml">YAML</button>
+            <button class="action-btn" id="actionExport">Export</button>
+            <button class="action-btn" id="actionUndo">Undo</button>
+            <button class="action-btn" id="actionClear">Clear</button>
           </span>
         </div>
         <div style="display:flex;gap:6px;">
           <input type="text" id="goalInput" placeholder="Enter a goal... e.g. &quot;Open Settings and enable Wi-Fi&quot;" />
-          <button class="btn-run" id="runBtn" onclick="handleRun()">Run</button>
-          <button class="btn-stop" id="stopBtn" onclick="stopExecution()" style="display:none">Stop</button>
+          <button class="btn-run" id="runBtn">Run</button>
+          <button class="btn-stop" id="stopBtn" style="display:none">Stop</button>
         </div>
       </div>
     </div>
@@ -677,7 +677,24 @@ export class DevicePanel {
     const platIos = document.getElementById("platIos");
     const platformToggle = document.getElementById("platformToggle");
     const multiLiveGrid = document.getElementById("multiLiveGrid");
+    const rawLogToggle = document.getElementById("rawLogToggle");
+    const debugLog = document.getElementById("debugLog");
+    const hitlSendBtn = document.getElementById("hitlSendBtn");
     let selectedPlatform = ""; // "" = use settings default
+
+    // ── Click event listeners (CSP blocks inline onclick handlers) ──
+    document.getElementById("modeGoal").addEventListener("click", function() { setMode("goal"); });
+    document.getElementById("modePlayground").addEventListener("click", function() { setMode("playground"); });
+    platAndroid.addEventListener("click", function() { setPlatform("android"); });
+    platIos.addEventListener("click", function() { setPlatform("ios"); });
+    runBtn.addEventListener("click", function() { handleRun(); });
+    stopBtn.addEventListener("click", function() { stopExecution(); });
+    hitlSendBtn.addEventListener("click", function() { submitHitl(); });
+    rawLogToggle.addEventListener("click", function() { toggleRawLog(); });
+    document.getElementById("actionYaml").addEventListener("click", function() { sendSlash("/yaml"); });
+    document.getElementById("actionExport").addEventListener("click", function() { exportFlow(); });
+    document.getElementById("actionUndo").addEventListener("click", function() { sendSlash("/undo"); });
+    document.getElementById("actionClear").addEventListener("click", function() { sendSlash("/clear"); });
 
     // ── Multi-device state ──────────────────────────────────
     let panelMode = "single"; // "single" | "multi"
@@ -1123,8 +1140,6 @@ export class DevicePanel {
       }
     }
 
-    const debugLog = document.getElementById("debugLog");
-    const rawLogToggle = document.getElementById("rawLogToggle");
     var rawLogOpen = false;
     function toggleRawLog() {
       rawLogOpen = !rawLogOpen;

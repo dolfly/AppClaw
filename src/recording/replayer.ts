@@ -273,7 +273,7 @@ async function executeReplayAction(
           const uuid = await findElementWithFallback(mcp, screenElements, elementId, coords);
           if (uuid) {
             await mcp.callTool('appium_gesture', { action: 'tap', elementUUID: uuid });
-            await mcp.callTool('appium_clear_element', { elementUUID: uuid }).catch(() => {});
+            await mcp.callTool('appium_set_value', { elementUUID: uuid, text: '' }).catch(() => {});
             await mcp.callTool('appium_set_value', { elementUUID: uuid, text });
             return { success: true, message: `Typed "${text}"` };
           }
@@ -310,7 +310,7 @@ async function executeReplayAction(
         }
 
         await mcp.callTool('appium_gesture', { action: 'tap', elementUUID: typeUuid });
-        await mcp.callTool('appium_clear_element', { elementUUID: typeUuid }).catch(() => {});
+        await mcp.callTool('appium_set_value', { elementUUID: typeUuid, text: '' }).catch(() => {});
         await mcp.callTool('appium_set_value', { elementUUID: typeUuid, text });
         return { success: true, message: `Typed "${text}"` };
       }

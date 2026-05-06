@@ -30,7 +30,7 @@ function resolveAppiumMcp(): { command: string; args: string[] } {
 const appiumMcp = resolveAppiumMcp();
 
 /** Tools that produce verbose output we don't want to log */
-const QUIET_TOOLS = new Set(['appium_get_page_source', 'appium_screenshot', 'appium_list_apps']);
+const QUIET_TOOLS = new Set(['appium_get_page_source', 'appium_screenshot']);
 
 const mcpDebug = process.env.MCP_DEBUG === '1' || process.env.MCP_DEBUG === 'true';
 

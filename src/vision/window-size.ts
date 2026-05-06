@@ -227,8 +227,8 @@ export async function getScreenSizeForStark(
   //    return physical pixel dimensions (e.g. "Width: 1440, Height: 3120"), making it
   //    ambiguous. appium_get_window_rect is more reliable.
   const windowRectTools = isIos
-    ? (['appium_get_window_rect', 'get_window_rect'] as const)
-    : (['appium_get_window_rect', 'appium_get_window_size', 'get_window_rect'] as const);
+    ? (['appium_get_window_size'] as const)
+    : (['appium_get_window_size'] as const);
 
   for (const name of windowRectTools) {
     try {

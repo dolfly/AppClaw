@@ -411,7 +411,7 @@ async function flowTypeText(
     if (!target) {
       const visionUuid = await findByVision(mcp, 'text input field, search box, or editable area');
       if (visionUuid && !isAIElement(visionUuid)) {
-        await mcp.callTool('appium_clear_element', { elementUUID: visionUuid }).catch(() => {});
+        await mcp.callTool('appium_set_value', { elementUUID: visionUuid, text: '' }).catch(() => {});
         const setResult = await mcp.callTool('appium_set_value', { elementUUID: visionUuid, text });
         const setText =
           setResult.content
@@ -444,7 +444,7 @@ async function flowTypeText(
     return { success: false, message: 'Could not resolve editable element' };
   }
   await mcp.callTool('appium_gesture', { action: 'tap', elementUUID: uuid });
-  await mcp.callTool('appium_clear_element', { elementUUID: uuid }).catch(() => {});
+  await mcp.callTool('appium_set_value', { elementUUID: uuid, text: '' }).catch(() => {});
   const setResult = await mcp.callTool('appium_set_value', {
     ...(Config.CLOUD_PROVIDER ? { w3cActions: true } : { elementUUID: uuid }),
     text,

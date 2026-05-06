@@ -55,11 +55,8 @@ export const EXCLUDED_MCP_TOOLS = new Set([
 /** Additional tools to exclude in vision mode — DOM-based tools that distract the agent */
 export const VISION_MODE_EXCLUDED_TOOLS = new Set([
   'appium_find_element',
-  'appium_find_elements',
   'appium_get_page_source',
   'appium_get_text',
-  'appium_get_attribute',
+  'appium_get_element_attribute',
   'appium_get_active_element',
-  'appium_clear_element',
-  'appium_scroll_to_element',
 ]);

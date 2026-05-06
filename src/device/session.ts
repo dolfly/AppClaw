@@ -49,12 +49,12 @@ export async function createPlatformSession(
 
   const args: Record<string, unknown> = { platform };
 
-  // Add platform-specific capabilities
+  // Add platform-specific capabilities (serialized as JSON string for appium-mcp)
   if (platform === 'android') {
     // extraCaps wins over config defaults (e.g. parallel workers override mjpeg/system ports)
     const caps = { ...buildAndroidCapabilities(config), ...extraCaps };
     if (Object.keys(caps).length > 0) {
-      args.capabilities = caps;
+      args.capabilities = JSON.stringify(caps);
     }
   } else if (platform === 'ios') {
     // For iOS, appium-mcp handles most capabilities internally (WDA setup, device selection).
@@ -64,7 +64,7 @@ export async function createPlatformSession(
       ...extraCaps,
     };
     if (Object.keys(iosCaps).length > 0) {
-      args.capabilities = iosCaps;
+      args.capabilities = JSON.stringify(iosCaps);
     }
   }
 
@@ -154,7 +154,7 @@ async function createLambdaTestSession(
   const args: Record<string, unknown> = {
     platform,
     remoteServerUrl: hubUrl,
-    capabilities,
+    capabilities: JSON.stringify(capabilities),
   };
 
   try {
@@ -218,7 +218,7 @@ async function detectScreenSize(mcp: MCPClient, platform: Platform): Promise<voi
     // skip them here and let getScreenSizeForStark correct them at runtime using
     // the actual screenshot for comparison.
     try {
-      const result = await mcp.callTool('appium_get_window_rect', {});
+      const result = await mcp.callTool('appium_get_window_size', {});
       const text = extractText(result);
       try {
         const obj = JSON.parse(text);
